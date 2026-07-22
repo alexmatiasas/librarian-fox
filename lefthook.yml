@@ -1,0 +1,41 @@
+pre-commit:
+  commands:
+    lint:
+      run: golangci-lint run
+      stage_fixed: true
+    format:
+      run: gofumpt -w -extra .
+      stage_fixed: true
+    go-mod-tidy:
+      run: go mod tidy
+      stage_fixed: true
+
+commit-msg:
+  commands:
+    validate:
+      run: |
+        MSG=$(cat "{1}")
+        if ! echo "$MSG" | grep -qE "^[A-Z][a-zA-Z0-9 ]+( [a-zA-Z0-9]+)*$"; then
+          echo "Invalid commit message format."
+          echo "Use imperative mood, start with capital letter."
+          echo "Examples:"
+          echo "  Add project detection for Rust"
+          echo "  Fix validation of nested project names"
+          echo "  Update template for Python projects"
+          exit 1
+        fi
+
+pre-push:
+  commands:
+    test:
+      run: go test -race -count=1 ./...
+
+post-checkout:
+  commands:
+    deps:
+      run: go mod download
+
+post-merge:
+  commands:
+    deps:
+      run: go mod download
