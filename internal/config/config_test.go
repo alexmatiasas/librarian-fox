@@ -1155,3 +1155,222 @@ func TestResolveTemplateVars(t *testing.T) {
 		})
 	}
 }
+
+// ============================================================================
+// Edge Cases
+// ============================================================================
+
+func TestLoadFrom_EmptyFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "empty.toml")
+
+	if err := os.WriteFile(configPath, []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadFrom(configPath)
+	if err != nil {
+		t.Fatalf("LoadFrom(empty) error = %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("LoadFrom(empty) returned nil")
+	}
+	// Should use all defaults
+	if StrVal(cfg.General.LogLevel) != "info" {
+		t.Errorf("LogLevel = %q, want info (default)", StrVal(cfg.General.LogLevel))
+	}
+}
+
+func TestLoadFrom_UnknownKeys(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "unknown.toml")
+
+	content := `
+[general]
+log_level = "debug"
+unknown_key = "should be ignored"
+another_unknown = 123
+
+[llm]
+provider = "groq"
+totally_fake_field = true
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadFrom(configPath)
+	if err != nil {
+		t.Fatalf("LoadFrom(unknown keys) error = %v", err)
+	}
+	// Known keys should be set
+	if StrVal(cfg.General.LogLevel) != "debug" {
+		t.Errorf("LogLevel = %q, want debug", StrVal(cfg.General.LogLevel))
+	}
+	if StrVal(cfg.LLM.Provider) != "groq" {
+		t.Errorf("Provider = %q, want groq", StrVal(cfg.LLM.Provider))
+	}
+	// Unknown keys should be silently ignored (BurntSushi/toml behavior)
+}
+
+func TestLoadFrom_PartialSections(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "partial.toml")
+
+	content := `
+[llm]
+model = "llama3.3:8b"
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadFrom(configPath)
+	if err != nil {
+		t.Fatalf("LoadFrom(partial) error = %v", err)
+	}
+	// Only model should be overridden
+	if StrVal(cfg.LLM.Model) != "llama3.3:8b" {
+		t.Errorf("Model = %q, want llama3.3:8b", StrVal(cfg.LLM.Model))
+	}
+	// Other LLM fields should keep defaults
+	if StrVal(cfg.LLM.Provider) != "ollama" {
+		t.Errorf("Provider = %q, want ollama (default)", StrVal(cfg.LLM.Provider))
+	}
+	if FloatVal(cfg.LLM.ConfidenceThreshold) != 0.7 {
+		t.Errorf("ConfidenceThreshold = %f, want 0.7 (default)", FloatVal(cfg.LLM.ConfidenceThreshold))
+	}
+}
+
+func TestLoadFrom_WrongTypes(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "wrongtype.toml")
+
+	// dry_run expects bool, we give string
+	content := `
+[general]
+dry_run = "si"
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadFrom(configPath)
+	if err == nil {
+		t.Fatal("LoadFrom(wrong type) should return error")
+	}
+	// BurntSushi/toml returns an error for type mismatches
+	t.Logf("Got expected error: %v", err)
+}
+
+func TestLoadFrom_OutOfRange(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "oorange.toml")
+
+	content := `
+[llm]
+confidence_threshold = 2.0
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadFrom(configPath)
+	if err == nil {
+		t.Fatal("LoadFrom(out of range) should return error from Validate()")
+	}
+	t.Logf("Got expected error: %v", err)
+}
+
+func TestLoadFrom_GlobalLocalOverride(t *testing.T) {
+	// Simulate global config
+	home, _ := os.UserHomeDir()
+	globalDir := filepath.Join(home, ".config", "lfx")
+	globalPath := filepath.Join(globalDir, "lfx.toml")
+
+	// Create global config
+	if err := os.MkdirAll(globalDir, 0o755); err != nil {
+		t.Skip("Cannot create global config dir")
+	}
+
+	globalContent := `
+[general]
+log_level = "warn"
+
+[llm]
+provider = "groq"
+`
+	if err := os.WriteFile(globalPath, []byte(globalContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Remove(globalPath) }() // cleanup
+
+	// Create local config
+	tmpDir := t.TempDir()
+	localPath := filepath.Join(tmpDir, "lfx.toml")
+	localContent := `
+[general]
+log_level = "debug"
+`
+	if err := os.WriteFile(localPath, []byte(localContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Load global first, then local should override
+	cfg := DefaultConfig()
+	if err := mergeFile(cfg, globalPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := mergeFile(cfg, localPath); err != nil {
+		t.Fatal(err)
+	}
+
+	// Local should win for log_level
+	if StrVal(cfg.General.LogLevel) != "debug" {
+		t.Errorf("LogLevel = %q, want debug (local override)", StrVal(cfg.General.LogLevel))
+	}
+	// Global should remain for provider (not overridden by local)
+	if StrVal(cfg.LLM.Provider) != "groq" {
+		t.Errorf("Provider = %q, want groq (from global)", StrVal(cfg.LLM.Provider))
+	}
+}
+
+func TestLoadFrom_NonExistentFile(t *testing.T) {
+	_, err := LoadFrom("/nonexistent/path/config.toml")
+	if err == nil {
+		t.Fatal("LoadFrom(nonexistent) should return error")
+	}
+	t.Logf("Got expected error: %v", err)
+}
+
+func TestLoadFrom_NestedPartial(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "nested.toml")
+
+	content := `
+[ocr]
+max_concurrent = 4
+
+[ocr.quality]
+blur_threshold = 200.0
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadFrom(configPath)
+	if err != nil {
+		t.Fatalf("LoadFrom(nested partial) error = %v", err)
+	}
+	// Overridden values
+	if IntVal(cfg.OCR.MaxConcurrent) != 4 {
+		t.Errorf("MaxConcurrent = %d, want 4", IntVal(cfg.OCR.MaxConcurrent))
+	}
+	if FloatVal(cfg.OCR.Quality.BlurThreshold) != 200.0 {
+		t.Errorf("BlurThreshold = %f, want 200.0", FloatVal(cfg.OCR.Quality.BlurThreshold))
+	}
+	// Non-overridden values should keep defaults
+	if FloatVal(cfg.OCR.Quality.SkewThreshold) != 2.0 {
+		t.Errorf("SkewThreshold = %f, want 2.0 (default)", FloatVal(cfg.OCR.Quality.SkewThreshold))
+	}
+}
