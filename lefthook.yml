@@ -15,13 +15,9 @@ commit-msg:
     validate:
       run: |
         MSG=$(cat "{1}")
-        if ! echo "$MSG" | grep -qE "^[A-Z][a-zA-Z0-9 ]+( [a-zA-Z0-9]+)*$"; then
+        if ! echo "$MSG" | grep -qE "^[A-Z][a-zA-Z0-9 ,.:;()!?¿¡']+( [a-zA-Z0-9 ,.:;()!?¿¡'-]+)*$"; then
           echo "Invalid commit message format."
           echo "Use imperative mood, start with capital letter."
-          echo "Examples:"
-          echo "  Add project detection for Rust"
-          echo "  Fix validation of nested project names"
-          echo "  Update template for Python projects"
           exit 1
         fi
 
