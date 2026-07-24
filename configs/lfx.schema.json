@@ -1,0 +1,391 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$id": "https://github.com/alexmatias/librarian_fox/internal/config/config",
+  "$ref": "#/$defs/Config",
+  "$defs": {
+    "ApplyConfig": {
+      "properties": {
+        "filename_template": {
+          "type": "string",
+          "description": "Output filename template using document metadata variables. WARNING: VS Code autocomplete mangles {curly braces} — type manually or verify after autocomplete.",
+          "default": "{autor} - {titulo} ({anio})"
+        },
+        "compression": {
+          "type": "string",
+          "enum": [
+            "ocrmypdf",
+            "ghostscript",
+            "none"
+          ],
+          "description": "Compression method for PDFs",
+          "default": "ocrmypdf"
+        },
+        "conflict": {
+          "type": "string",
+          "enum": [
+            "suffix",
+            "overwrite",
+            "skip",
+            "ask"
+          ],
+          "description": "How to handle filename conflicts in destination",
+          "default": "suffix"
+        },
+        "backup_dir": {
+          "type": "string",
+          "description": "Where to store backups before apply. WARNING: VS Code autocomplete mangles {curly braces} — type manually or verify after autocomplete.",
+          "default": "{library_dir}/.backups"
+        },
+        "backup_compress": {
+          "type": "boolean",
+          "description": "Compress backup files (gzip)",
+          "default": true
+        },
+        "backup_max_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of backups to keep",
+          "default": 5
+        },
+        "backup_max_age_days": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Delete backups older than this (days)",
+          "default": 30
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Config": {
+      "properties": {
+        "general": {
+          "$ref": "#/$defs/GeneralConfig"
+        },
+        "scan": {
+          "$ref": "#/$defs/ScanConfig"
+        },
+        "llm": {
+          "$ref": "#/$defs/LLMConfig"
+        },
+        "library": {
+          "$ref": "#/$defs/LibraryConfig"
+        },
+        "metadata": {
+          "$ref": "#/$defs/MetadataConfig"
+        },
+        "ocr": {
+          "$ref": "#/$defs/OCRConfig"
+        },
+        "apply": {
+          "$ref": "#/$defs/ApplyConfig"
+        },
+        "kavita": {
+          "$ref": "#/$defs/KavitaConfig"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "GeneralConfig": {
+      "properties": {
+        "root": {
+          "type": "string",
+          "description": "Root directory to scan for documents",
+          "default": "~"
+        },
+        "library_dir": {
+          "type": "string",
+          "description": "Destination directory for organized library",
+          "default": "~/Library"
+        },
+        "manifest_path": {
+          "type": "string",
+          "description": "Path to the SQLite manifest database",
+          "default": "~/.local/share/lfx/manifest.db"
+        },
+        "log_level": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ],
+          "description": "Logging verbosity level",
+          "default": "info"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "If true",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "KavitaConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable Kavita server management",
+          "default": false
+        },
+        "docker_compose_path": {
+          "type": "string",
+          "description": "Path to the Kavita docker-compose.yml file",
+          "default": "~/.config/lfx/docker-compose.kavita.yml"
+        },
+        "port": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 1,
+          "description": "Kavita web UI port",
+          "default": 5000
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "LLMConfig": {
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "ollama",
+            "groq",
+            "cerebras"
+          ],
+          "description": "LLM backend to use",
+          "default": "ollama"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model name for the LLM provider",
+          "default": "qwen3:8b"
+        },
+        "fallback_model": {
+          "type": "string",
+          "description": "Fallback model if primary fails",
+          "default": "llama3.3:8b"
+        },
+        "confidence_threshold": {
+          "type": "number",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "description": "Minimum confidence for LLM classifications (below this -\u003e unknown)",
+          "default": 0.7
+        },
+        "confidence_warning": {
+          "type": "number",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "description": "Warning threshold for moderate confidence classifications",
+          "default": 0.9
+        },
+        "temperature": {
+          "type": "number",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "description": "LLM temperature (lower = more deterministic)",
+          "default": 0.2
+        },
+        "max_concurrent": {
+          "type": "integer",
+          "maximum": 20,
+          "minimum": 1,
+          "description": "Maximum parallel LLM API calls",
+          "default": 3
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Timeout per LLM call in seconds",
+          "default": 60
+        },
+        "local_only_categories": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Categories that must always be processed with local Ollama (never cloud)"
+        },
+        "retry": {
+          "type": "boolean",
+          "description": "Enable retry with fallback model on low confidence",
+          "default": true
+        },
+        "max_retries": {
+          "type": "integer",
+          "maximum": 5,
+          "minimum": 0,
+          "description": "Maximum retry attempts (same model + fallback)",
+          "default": 2
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "LibraryConfig": {
+      "properties": {
+        "layout": {
+          "type": "string",
+          "description": "Folder layout template for the organized library. WARNING: VS Code autocomplete mangles {curly braces} — type manually or verify after autocomplete.",
+          "default": "{tipo}/{subject}"
+        },
+        "types": {
+          "$ref": "#/$defs/LibraryTypes"
+        },
+        "subjects": {
+          "$ref": "#/$defs/LibrarySubjects"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "LibrarySubjects": {
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "emergente",
+            "predefinida",
+            "mixta"
+          ],
+          "description": "How subjects are determined",
+          "default": "emergente"
+        },
+        "merge_threshold": {
+          "type": "number",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "description": "Similarity threshold to auto-group similar subjects",
+          "default": 0.8
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "LibraryTypes": {
+      "properties": {
+        "valid_types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Fixed document types the LLM can assign"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "MetadataConfig": {
+      "properties": {
+        "ebook_meta_path": {
+          "type": "string",
+          "description": "Path to Calibre's ebook-meta CLI",
+          "default": "ebook-meta"
+        },
+        "fetch_metadata_path": {
+          "type": "string",
+          "description": "Path to Calibre's fetch-ebook-metadata CLI",
+          "default": "fetch-ebook-metadata"
+        },
+        "metadata_sources": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Metadata sources to cross-reference for books"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "OCRConfig": {
+      "properties": {
+        "languages": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Tesseract language pack codes to use for OCR"
+        },
+        "max_concurrent": {
+          "type": "integer",
+          "maximum": 8,
+          "minimum": 1,
+          "description": "Maximum parallel OCR jobs (CPU-intensive)",
+          "default": 2
+        },
+        "quality": {
+          "$ref": "#/$defs/OCRQuality"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "OCRQuality": {
+      "properties": {
+        "blur_threshold": {
+          "type": "number",
+          "description": "Laplacian variance below this = too blurry for direct OCR",
+          "default": 100.0
+        },
+        "skew_threshold": {
+          "type": "number",
+          "description": "Maximum skew angle in degrees before deskew",
+          "default": 2.0
+        },
+        "contrast_min_spread": {
+          "type": "number",
+          "description": "Minimum histogram spread for acceptable contrast",
+          "default": 30.0
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ScanConfig": {
+      "properties": {
+        "max_depth": {
+          "type": "integer",
+          "maximum": 20,
+          "minimum": 1,
+          "description": "Maximum directory recursion depth from root",
+          "default": 5
+        },
+        "min_file_size_kb": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Ignore files smaller than this (in KB)",
+          "default": 10
+        },
+        "max_file_size_mb": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Ignore files larger than this (in MB)",
+          "default": 500
+        },
+        "exclude_dirs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Directory names to skip during scanning (symlinks always skipped)"
+        },
+        "extensions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "File extensions to process (without the dot)"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  },
+  "title": "lfx configuration",
+  "description": "Configuration file for lfx — Clasifier, Restorer and Organizer of files."
+}

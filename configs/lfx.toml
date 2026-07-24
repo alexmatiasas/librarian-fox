@@ -1,0 +1,76 @@
+#:schema ./lfx.schema.json
+# lfx.toml — Configuration
+# Location: ~/.config/lfx/lfx.toml (global) or ./lfx.toml (local)
+# Priority: defaults < ~/.config/lfx/lfx.toml < ./lfx.toml < --flags < $ENV_VARS
+
+[general]
+root = "~"
+library_dir = "~/Library"
+manifest_path = "~/.local/share/lfx/manifest.db"
+log_level = "info"
+dry_run = true
+
+[scan]
+max_depth = 5
+min_file_size_kb = 10
+max_file_size_mb = 500
+exclude_dirs = [
+    "Library", "node_modules", ".cache", ".Trash", ".npm", ".nvm",
+    ".cargo", ".rustup", "go/pkg", "go/src", ".local/share/Trash",
+    "Applications", "Movies", "Music", "Pictures", "Public", ".git", "Desktop",
+]
+extensions = ["pdf", "djvu", "docx", "doc"]
+
+[llm]
+provider = "ollama"
+model = "qwen3:8b"
+fallback_model = "llama3.3:8b"
+confidence_threshold = 0.7
+confidence_warning = 0.9
+temperature = 0.2
+max_concurrent = 3
+timeout_seconds = 60
+local_only_categories = ["Personal / Administrativo"]
+retry = true
+max_retries = 2
+
+[library]
+layout = "{tipo}/{subject}"
+
+[library.types]
+valid_types = [
+    "Libro", "Paper / Artículo", "Tesis", "Notas / Apuntes",
+    "Manual / Guía", "Reporte / Doc. técnico", "Documento personal", "Otro",
+]
+
+[library.subjects]
+strategy = "emergente"
+merge_threshold = 0.8
+
+[metadata]
+ebook_meta_path = "ebook-meta"
+fetch_metadata_path = "fetch-ebook-metadata"
+metadata_sources = ["google_books", "open_library"]
+
+[ocr]
+languages = ["eng", "spa"]
+max_concurrent = 2
+
+[ocr.quality]
+blur_threshold = 100.0
+skew_threshold = 2.0
+contrast_min_spread = 30.0
+
+[apply]
+filename_template = "{autor} - {titulo} ({anio})"
+compression = "ocrmypdf"
+conflict = "suffix"
+backup_dir = "{library_dir}/.backups"
+backup_compress = true
+backup_max_count = 5
+backup_max_age_days = 30
+
+[kavita]
+enabled = false
+docker_compose_path = "~/.config/lfx/docker-compose.kavita.yml"
+port = 5000
