@@ -19,33 +19,33 @@ import (
 // Pointer helpers — Go lacks syntactic sugar for pointer creation
 // ============================================================================
 
-func strPtr(s string) *string     { return &s }
-func boolPtr(b bool) *bool        { return &b }
-func intPtr(i int) *int           { return &i }
-func floatPtr(f float64) *float64 { return &f }
+func StrPtr(s string) *string     { return &s }
+func BoolPtr(b bool) *bool        { return &b }
+func IntPtr(i int) *int           { return &i }
+func FloatPtr(f float64) *float64 { return &f }
 
-func strVal(p *string) string {
+func StrVal(p *string) string {
 	if p == nil {
 		return ""
 	}
 	return *p
 }
 
-func boolVal(p *bool) bool {
+func BoolVal(p *bool) bool {
 	if p == nil {
 		return false
 	}
 	return *p
 }
 
-func intVal(p *int) int {
+func IntVal(p *int) int {
 	if p == nil {
 		return 0
 	}
 	return *p
 }
 
-func floatVal(p *float64) float64 {
+func FloatVal(p *float64) float64 {
 	if p == nil {
 		return 0
 	}
@@ -158,16 +158,16 @@ type KavitaConfig struct {
 func DefaultConfig() *Config {
 	return &Config{
 		General: &GeneralConfig{
-			Root:         strPtr("~"),
-			LibraryDir:   strPtr("~/Library"),
-			ManifestPath: strPtr("~/.local/share/lfx/manifest.db"),
-			LogLevel:     strPtr("info"),
-			DryRun:       boolPtr(true),
+			Root:         StrPtr("~"),
+			LibraryDir:   StrPtr("~/Library"),
+			ManifestPath: StrPtr("~/.local/share/lfx/manifest.db"),
+			LogLevel:     StrPtr("info"),
+			DryRun:       BoolPtr(true),
 		},
 		Scan: &ScanConfig{
-			MaxDepth:      intPtr(5),
-			MinFileSizeKB: intPtr(10),
-			MaxFileSizeMB: intPtr(500),
+			MaxDepth:      IntPtr(5),
+			MinFileSizeKB: IntPtr(10),
+			MaxFileSizeMB: IntPtr(500),
 			ExcludeDirs: []string{
 				"Library", "node_modules", ".cache", ".Trash", ".npm", ".nvm",
 				".cargo", ".rustup", "go/pkg", "go/src", ".local/share/Trash",
@@ -176,20 +176,20 @@ func DefaultConfig() *Config {
 			Extensions: []string{"pdf", "djvu", "docx", "doc"},
 		},
 		LLM: &LLMConfig{
-			Provider:            strPtr("ollama"),
-			Model:               strPtr("qwen3:8b"),
-			FallbackModel:       strPtr("llama3.3:8b"),
-			ConfidenceThreshold: floatPtr(0.7),
-			ConfidenceWarning:   floatPtr(0.9),
-			Temperature:         floatPtr(0.2),
-			MaxConcurrent:       intPtr(3),
-			TimeoutSeconds:      intPtr(60),
+			Provider:            StrPtr("ollama"),
+			Model:               StrPtr("qwen3:8b"),
+			FallbackModel:       StrPtr("llama3.3:8b"),
+			ConfidenceThreshold: FloatPtr(0.7),
+			ConfidenceWarning:   FloatPtr(0.9),
+			Temperature:         FloatPtr(0.2),
+			MaxConcurrent:       IntPtr(3),
+			TimeoutSeconds:      IntPtr(60),
 			LocalOnlyCategories: []string{"Personal / Administrativo"},
-			Retry:               boolPtr(true),
-			MaxRetries:          intPtr(2),
+			Retry:               BoolPtr(true),
+			MaxRetries:          IntPtr(2),
 		},
 		Library: &LibraryConfig{
-			Layout: strPtr("{tipo}/{subject}"),
+			Layout: StrPtr("{tipo}/{subject}"),
 			Types: &LibraryTypes{
 				ValidTypes: []string{
 					"Libro", "Paper / Artículo", "Tesis", "Notas / Apuntes",
@@ -197,43 +197,44 @@ func DefaultConfig() *Config {
 				},
 			},
 			Subjects: &LibrarySubjects{
-				Strategy:       strPtr("emergente"),
-				MergeThreshold: floatPtr(0.8),
+				Strategy:       StrPtr("emergente"),
+				MergeThreshold: FloatPtr(0.8),
 			},
 		},
 		Metadata: &MetadataConfig{
-			EbookMetaPath:     strPtr("ebook-meta"),
-			FetchMetadataPath: strPtr("fetch-ebook-metadata"),
+			EbookMetaPath:     StrPtr("ebook-meta"),
+			FetchMetadataPath: StrPtr("fetch-ebook-metadata"),
 			MetadataSources:   []string{"google_books", "open_library"},
 		},
 		OCR: &OCRConfig{
 			Languages:     []string{"eng", "spa"},
-			MaxConcurrent: intPtr(2),
+			MaxConcurrent: IntPtr(2),
 			Quality: &OCRQuality{
-				BlurThreshold:     floatPtr(100.0),
-				SkewThreshold:     floatPtr(2.0),
-				ContrastMinSpread: floatPtr(30.0),
+				BlurThreshold:     FloatPtr(100.0),
+				SkewThreshold:     FloatPtr(2.0),
+				ContrastMinSpread: FloatPtr(30.0),
 			},
 		},
 		Apply: &ApplyConfig{
-			FilenameTemplate: strPtr("{autor} - {titulo} ({anio})"),
-			Compression:      strPtr("ocrmypdf"),
-			Conflict:         strPtr("suffix"),
-			BackupDir:        strPtr("{library_dir}/.backups"),
-			BackupCompress:   boolPtr(true),
-			BackupMaxCount:   intPtr(5),
-			BackupMaxAgeDays: intPtr(30),
+			FilenameTemplate: StrPtr("{autor} - {titulo} ({anio})"),
+			Compression:      StrPtr("ocrmypdf"),
+			Conflict:         StrPtr("suffix"),
+			BackupDir:        StrPtr("{library_dir}/.backups"),
+			BackupCompress:   BoolPtr(true),
+			BackupMaxCount:   IntPtr(5),
+			BackupMaxAgeDays: IntPtr(30),
 		},
 		Kavita: &KavitaConfig{
-			Enabled:           boolPtr(false),
-			DockerComposePath: strPtr("~/.config/lfx/docker-compose.kavita.yml"),
-			Port:              intPtr(5000),
+			Enabled:           BoolPtr(false),
+			DockerComposePath: StrPtr("~/.config/lfx/docker-compose.kavita.yml"),
+			Port:              IntPtr(5000),
 		},
 	}
 }
 
 // Load reads and merges configuration files, returning the final config.
 // Priority: defaults < ~/.config/lfx/lfx.toml < ./lfx.toml
+// Validates the final config and returns an error if invalid.
 func Load() (*Config, error) {
 	cfg := DefaultConfig()
 
@@ -254,16 +255,28 @@ func Load() (*Config, error) {
 	// Expand ~ in paths
 	expandPaths(cfg)
 
+	// Validate final config
+	if err := Validate(cfg); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 
 // LoadFrom reads a specific config file and merges it over defaults.
+// Validates the final config and returns an error if invalid.
 func LoadFrom(path string) (*Config, error) {
 	cfg := DefaultConfig()
 	if err := mergeFile(cfg, path); err != nil {
 		return nil, fmt.Errorf("loading config from %s: %w", path, err)
 	}
 	expandPaths(cfg)
+
+	// Validate final config
+	if err := Validate(cfg); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 
@@ -274,45 +287,45 @@ func Validate(cfg *Config) error {
 	if cfg.General == nil {
 		errs = append(errs, "[general] section required")
 	} else {
-		if strVal(cfg.General.Root) == "" {
+		if StrVal(cfg.General.Root) == "" {
 			errs = append(errs, "[general].root cannot be empty")
 		}
-		if strVal(cfg.General.LibraryDir) == "" {
+		if StrVal(cfg.General.LibraryDir) == "" {
 			errs = append(errs, "[general].library_dir cannot be empty")
 		}
-		if strVal(cfg.General.ManifestPath) == "" {
+		if StrVal(cfg.General.ManifestPath) == "" {
 			errs = append(errs, "[general].manifest_path cannot be empty")
 		}
 		validLogLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
-		if !validLogLevels[strVal(cfg.General.LogLevel)] {
-			errs = append(errs, fmt.Sprintf("[general].log_level must be one of: debug, info, warn, error (got %q)", strVal(cfg.General.LogLevel)))
+		if !validLogLevels[StrVal(cfg.General.LogLevel)] {
+			errs = append(errs, fmt.Sprintf("[general].log_level must be one of: debug, info, warn, error (got %q)", StrVal(cfg.General.LogLevel)))
 		}
 	}
 
 	if cfg.LLM != nil {
 		validProviders := map[string]bool{"ollama": true, "groq": true, "cerebras": true}
-		if !validProviders[strVal(cfg.LLM.Provider)] {
-			errs = append(errs, fmt.Sprintf("[llm].provider must be one of: ollama, groq, cerebras (got %q)", strVal(cfg.LLM.Provider)))
+		if !validProviders[StrVal(cfg.LLM.Provider)] {
+			errs = append(errs, fmt.Sprintf("[llm].provider must be one of: ollama, groq, cerebras (got %q)", StrVal(cfg.LLM.Provider)))
 		}
-		if floatVal(cfg.LLM.ConfidenceThreshold) < 0 || floatVal(cfg.LLM.ConfidenceThreshold) > 1 {
+		if FloatVal(cfg.LLM.ConfidenceThreshold) < 0 || FloatVal(cfg.LLM.ConfidenceThreshold) > 1 {
 			errs = append(errs, "[llm].confidence_threshold must be between 0 and 1")
 		}
-		if floatVal(cfg.LLM.ConfidenceWarning) < 0 || floatVal(cfg.LLM.ConfidenceWarning) > 1 {
+		if FloatVal(cfg.LLM.ConfidenceWarning) < 0 || FloatVal(cfg.LLM.ConfidenceWarning) > 1 {
 			errs = append(errs, "[llm].confidence_warning must be between 0 and 1")
 		}
-		if floatVal(cfg.LLM.Temperature) < 0 || floatVal(cfg.LLM.Temperature) > 2 {
+		if FloatVal(cfg.LLM.Temperature) < 0 || FloatVal(cfg.LLM.Temperature) > 2 {
 			errs = append(errs, "[llm].temperature must be between 0 and 2")
 		}
 	}
 
 	if cfg.Apply != nil {
 		validCompression := map[string]bool{"ocrmypdf": true, "ghostscript": true, "none": true}
-		if !validCompression[strVal(cfg.Apply.Compression)] {
-			errs = append(errs, fmt.Sprintf("[apply].compression must be one of: ocrmypdf, ghostscript, none (got %q)", strVal(cfg.Apply.Compression)))
+		if !validCompression[StrVal(cfg.Apply.Compression)] {
+			errs = append(errs, fmt.Sprintf("[apply].compression must be one of: ocrmypdf, ghostscript, none (got %q)", StrVal(cfg.Apply.Compression)))
 		}
 		validConflict := map[string]bool{"suffix": true, "overwrite": true, "skip": true, "ask": true}
-		if !validConflict[strVal(cfg.Apply.Conflict)] {
-			errs = append(errs, fmt.Sprintf("[apply].conflict must be one of: suffix, overwrite, skip, ask (got %q)", strVal(cfg.Apply.Conflict)))
+		if !validConflict[StrVal(cfg.Apply.Conflict)] {
+			errs = append(errs, fmt.Sprintf("[apply].conflict must be one of: suffix, overwrite, skip, ask (got %q)", StrVal(cfg.Apply.Conflict)))
 		}
 	}
 
@@ -564,16 +577,43 @@ func mergeKavita(dst, src *KavitaConfig) {
 // expandPaths expands ~ in all path fields to absolute paths.
 func expandPaths(cfg *Config) {
 	if cfg.General != nil {
-		cfg.General.Root = strPtr(expandTilde(strVal(cfg.General.Root)))
-		cfg.General.LibraryDir = strPtr(expandTilde(strVal(cfg.General.LibraryDir)))
-		cfg.General.ManifestPath = strPtr(expandTilde(strVal(cfg.General.ManifestPath)))
+		cfg.General.Root = StrPtr(expandTilde(StrVal(cfg.General.Root)))
+		cfg.General.LibraryDir = StrPtr(expandTilde(StrVal(cfg.General.LibraryDir)))
+		cfg.General.ManifestPath = StrPtr(expandTilde(StrVal(cfg.General.ManifestPath)))
 	}
 	if cfg.Kavita != nil {
-		cfg.Kavita.DockerComposePath = strPtr(expandTilde(strVal(cfg.Kavita.DockerComposePath)))
+		cfg.Kavita.DockerComposePath = StrPtr(expandTilde(StrVal(cfg.Kavita.DockerComposePath)))
 	}
 	if cfg.Apply != nil {
-		cfg.Apply.BackupDir = strPtr(expandTilde(strVal(cfg.Apply.BackupDir)))
+		cfg.Apply.BackupDir = StrPtr(expandTilde(StrVal(cfg.Apply.BackupDir)))
 	}
+
+	// Resolve template variables after tilde expansion
+	resolveTemplateVars(cfg)
+}
+
+// resolveTemplateVars replaces {variable} references with actual config values.
+// Currently supported: {library_dir}, {root}
+func resolveTemplateVars(cfg *Config) {
+	if cfg.Apply == nil || cfg.Apply.BackupDir == nil {
+		return
+	}
+
+	vars := map[string]string{}
+	if cfg.General != nil {
+		if v := StrVal(cfg.General.LibraryDir); v != "" {
+			vars["library_dir"] = v
+		}
+		if v := StrVal(cfg.General.Root); v != "" {
+			vars["root"] = v
+		}
+	}
+
+	result := StrVal(cfg.Apply.BackupDir)
+	for k, v := range vars {
+		result = strings.ReplaceAll(result, "{"+k+"}", v)
+	}
+	cfg.Apply.BackupDir = StrPtr(result)
 }
 
 // expandTilde replaces ~ with the user's home directory.

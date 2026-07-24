@@ -21,6 +21,7 @@ func main() {
 
 	rootCmd.AddCommand(
 		newVersionCmd(),
+		newConfigCmd(),
 		// newScanCmd(),
 		// newClassifyCmd(),
 		// newRestoreCmd(),

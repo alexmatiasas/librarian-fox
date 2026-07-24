@@ -14,40 +14,40 @@ import (
 // ============================================================================
 
 func TestHelpers(t *testing.T) {
-	// strPtr/strVal
-	s := strPtr("hello")
-	if strVal(s) != "hello" {
-		t.Errorf("strVal(strPtr('hello')) = %q", strVal(s))
+	// StrPtr/StrVal
+	s := StrPtr("hello")
+	if StrVal(s) != "hello" {
+		t.Errorf("StrVal(StrPtr('hello')) = %q", StrVal(s))
 	}
-	if strVal(nil) != "" {
-		t.Errorf("strVal(nil) = %q, want empty", strVal(nil))
-	}
-
-	// boolPtr/boolVal
-	b := boolPtr(true)
-	if !boolVal(b) {
-		t.Error("boolVal(boolPtr(true)) should be true")
-	}
-	if boolVal(nil) {
-		t.Error("boolVal(nil) should be false")
+	if StrVal(nil) != "" {
+		t.Errorf("StrVal(nil) = %q, want empty", StrVal(nil))
 	}
 
-	// intPtr/intVal
-	i := intPtr(42)
-	if intVal(i) != 42 {
-		t.Errorf("intVal(intPtr(42)) = %d", intVal(i))
+	// BoolPtr/BoolVal
+	b := BoolPtr(true)
+	if !BoolVal(b) {
+		t.Error("BoolVal(BoolPtr(true)) should be true")
 	}
-	if intVal(nil) != 0 {
-		t.Errorf("intVal(nil) = %d, want 0", intVal(nil))
+	if BoolVal(nil) {
+		t.Error("BoolVal(nil) should be false")
 	}
 
-	// floatPtr/floatVal
-	f := floatPtr(3.14)
-	if floatVal(f) != 3.14 {
-		t.Errorf("floatVal(floatPtr(3.14)) = %f", floatVal(f))
+	// IntPtr/IntVal
+	i := IntPtr(42)
+	if IntVal(i) != 42 {
+		t.Errorf("IntVal(IntPtr(42)) = %d", IntVal(i))
 	}
-	if floatVal(nil) != 0 {
-		t.Errorf("floatVal(nil) = %f, want 0", floatVal(nil))
+	if IntVal(nil) != 0 {
+		t.Errorf("IntVal(nil) = %d, want 0", IntVal(nil))
+	}
+
+	// FloatPtr/FloatVal
+	f := FloatPtr(3.14)
+	if FloatVal(f) != 3.14 {
+		t.Errorf("FloatVal(FloatPtr(3.14)) = %f", FloatVal(f))
+	}
+	if FloatVal(nil) != 0 {
+		t.Errorf("FloatVal(nil) = %f, want 0", FloatVal(nil))
 	}
 }
 
@@ -66,17 +66,17 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.General == nil {
 		t.Fatal("General config is nil")
 	}
-	if strVal(cfg.General.Root) != "~" {
-		t.Errorf("General.Root = %q, want ~", strVal(cfg.General.Root))
+	if StrVal(cfg.General.Root) != "~" {
+		t.Errorf("General.Root = %q, want ~", StrVal(cfg.General.Root))
 	}
-	if strVal(cfg.General.LibraryDir) != "~/Library" {
-		t.Errorf("General.LibraryDir = %q, want ~/Library", strVal(cfg.General.LibraryDir))
+	if StrVal(cfg.General.LibraryDir) != "~/Library" {
+		t.Errorf("General.LibraryDir = %q, want ~/Library", StrVal(cfg.General.LibraryDir))
 	}
-	if strVal(cfg.General.ManifestPath) != "~/.local/share/lfx/manifest.db" {
-		t.Errorf("General.ManifestPath = %q", strVal(cfg.General.ManifestPath))
+	if StrVal(cfg.General.ManifestPath) != "~/.local/share/lfx/manifest.db" {
+		t.Errorf("General.ManifestPath = %q", StrVal(cfg.General.ManifestPath))
 	}
-	if strVal(cfg.General.LogLevel) != "info" {
-		t.Errorf("General.LogLevel = %q, want info", strVal(cfg.General.LogLevel))
+	if StrVal(cfg.General.LogLevel) != "info" {
+		t.Errorf("General.LogLevel = %q, want info", StrVal(cfg.General.LogLevel))
 	}
 	if cfg.General.DryRun == nil || !*cfg.General.DryRun {
 		t.Error("General.DryRun should default to true")
@@ -86,14 +86,14 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Scan == nil {
 		t.Fatal("Scan config is nil")
 	}
-	if intVal(cfg.Scan.MaxDepth) != 5 {
-		t.Errorf("Scan.MaxDepth = %d, want 5", intVal(cfg.Scan.MaxDepth))
+	if IntVal(cfg.Scan.MaxDepth) != 5 {
+		t.Errorf("Scan.MaxDepth = %d, want 5", IntVal(cfg.Scan.MaxDepth))
 	}
-	if intVal(cfg.Scan.MinFileSizeKB) != 10 {
-		t.Errorf("Scan.MinFileSizeKB = %d, want 10", intVal(cfg.Scan.MinFileSizeKB))
+	if IntVal(cfg.Scan.MinFileSizeKB) != 10 {
+		t.Errorf("Scan.MinFileSizeKB = %d, want 10", IntVal(cfg.Scan.MinFileSizeKB))
 	}
-	if intVal(cfg.Scan.MaxFileSizeMB) != 500 {
-		t.Errorf("Scan.MaxFileSizeMB = %d, want 500", intVal(cfg.Scan.MaxFileSizeMB))
+	if IntVal(cfg.Scan.MaxFileSizeMB) != 500 {
+		t.Errorf("Scan.MaxFileSizeMB = %d, want 500", IntVal(cfg.Scan.MaxFileSizeMB))
 	}
 	if len(cfg.Scan.ExcludeDirs) == 0 {
 		t.Error("Scan.ExcludeDirs should not be empty")
@@ -106,91 +106,91 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.LLM == nil {
 		t.Fatal("LLM config is nil")
 	}
-	if strVal(cfg.LLM.Provider) != "ollama" {
-		t.Errorf("LLM.Provider = %q, want ollama", strVal(cfg.LLM.Provider))
+	if StrVal(cfg.LLM.Provider) != "ollama" {
+		t.Errorf("LLM.Provider = %q, want ollama", StrVal(cfg.LLM.Provider))
 	}
-	if strVal(cfg.LLM.Model) != "qwen3:8b" {
-		t.Errorf("LLM.Model = %q, want qwen3:8b", strVal(cfg.LLM.Model))
+	if StrVal(cfg.LLM.Model) != "qwen3:8b" {
+		t.Errorf("LLM.Model = %q, want qwen3:8b", StrVal(cfg.LLM.Model))
 	}
-	if strVal(cfg.LLM.FallbackModel) != "llama3.3:8b" {
-		t.Errorf("LLM.FallbackModel = %q, want llama3.3:8b", strVal(cfg.LLM.FallbackModel))
+	if StrVal(cfg.LLM.FallbackModel) != "llama3.3:8b" {
+		t.Errorf("LLM.FallbackModel = %q, want llama3.3:8b", StrVal(cfg.LLM.FallbackModel))
 	}
-	if floatVal(cfg.LLM.ConfidenceThreshold) != 0.7 {
-		t.Errorf("LLM.ConfidenceThreshold = %f, want 0.7", floatVal(cfg.LLM.ConfidenceThreshold))
+	if FloatVal(cfg.LLM.ConfidenceThreshold) != 0.7 {
+		t.Errorf("LLM.ConfidenceThreshold = %f, want 0.7", FloatVal(cfg.LLM.ConfidenceThreshold))
 	}
-	if floatVal(cfg.LLM.ConfidenceWarning) != 0.9 {
-		t.Errorf("LLM.ConfidenceWarning = %f, want 0.9", floatVal(cfg.LLM.ConfidenceWarning))
+	if FloatVal(cfg.LLM.ConfidenceWarning) != 0.9 {
+		t.Errorf("LLM.ConfidenceWarning = %f, want 0.9", FloatVal(cfg.LLM.ConfidenceWarning))
 	}
-	if floatVal(cfg.LLM.Temperature) != 0.2 {
-		t.Errorf("LLM.Temperature = %f, want 0.2", floatVal(cfg.LLM.Temperature))
+	if FloatVal(cfg.LLM.Temperature) != 0.2 {
+		t.Errorf("LLM.Temperature = %f, want 0.2", FloatVal(cfg.LLM.Temperature))
 	}
-	if intVal(cfg.LLM.MaxConcurrent) != 3 {
-		t.Errorf("LLM.MaxConcurrent = %d, want 3", intVal(cfg.LLM.MaxConcurrent))
+	if IntVal(cfg.LLM.MaxConcurrent) != 3 {
+		t.Errorf("LLM.MaxConcurrent = %d, want 3", IntVal(cfg.LLM.MaxConcurrent))
 	}
-	if intVal(cfg.LLM.TimeoutSeconds) != 60 {
-		t.Errorf("LLM.TimeoutSeconds = %d, want 60", intVal(cfg.LLM.TimeoutSeconds))
+	if IntVal(cfg.LLM.TimeoutSeconds) != 60 {
+		t.Errorf("LLM.TimeoutSeconds = %d, want 60", IntVal(cfg.LLM.TimeoutSeconds))
 	}
 	if cfg.LLM.Retry == nil || !*cfg.LLM.Retry {
 		t.Error("LLM.Retry should default to true")
 	}
-	if intVal(cfg.LLM.MaxRetries) != 2 {
-		t.Errorf("LLM.MaxRetries = %d, want 2", intVal(cfg.LLM.MaxRetries))
+	if IntVal(cfg.LLM.MaxRetries) != 2 {
+		t.Errorf("LLM.MaxRetries = %d, want 2", IntVal(cfg.LLM.MaxRetries))
 	}
 
 	// Library
 	if cfg.Library == nil {
 		t.Fatal("Library config is nil")
 	}
-	if strVal(cfg.Library.Layout) != "{tipo}/{subject}" {
-		t.Errorf("Library.Layout = %q, want {tipo}/{subject}", strVal(cfg.Library.Layout))
+	if StrVal(cfg.Library.Layout) != "{tipo}/{subject}" {
+		t.Errorf("Library.Layout = %q, want {tipo}/{subject}", StrVal(cfg.Library.Layout))
 	}
 	if cfg.Library.Types == nil || len(cfg.Library.Types.ValidTypes) != 8 {
 		t.Errorf("Library.Types.ValidTypes should have 8 types")
 	}
-	if cfg.Library.Subjects == nil || strVal(cfg.Library.Subjects.Strategy) != "emergente" {
-		t.Errorf("Library.Subjects.Strategy = %q, want emergente", strVal(cfg.Library.Subjects.Strategy))
+	if cfg.Library.Subjects == nil || StrVal(cfg.Library.Subjects.Strategy) != "emergente" {
+		t.Errorf("Library.Subjects.Strategy = %q, want emergente", StrVal(cfg.Library.Subjects.Strategy))
 	}
 
 	// Metadata
 	if cfg.Metadata == nil {
 		t.Fatal("Metadata config is nil")
 	}
-	if strVal(cfg.Metadata.EbookMetaPath) != "ebook-meta" {
-		t.Errorf("Metadata.EbookMetaPath = %q, want ebook-meta", strVal(cfg.Metadata.EbookMetaPath))
+	if StrVal(cfg.Metadata.EbookMetaPath) != "ebook-meta" {
+		t.Errorf("Metadata.EbookMetaPath = %q, want ebook-meta", StrVal(cfg.Metadata.EbookMetaPath))
 	}
 
 	// OCR
 	if cfg.OCR == nil {
 		t.Fatal("OCR config is nil")
 	}
-	if intVal(cfg.OCR.MaxConcurrent) != 2 {
-		t.Errorf("OCR.MaxConcurrent = %d, want 2", intVal(cfg.OCR.MaxConcurrent))
+	if IntVal(cfg.OCR.MaxConcurrent) != 2 {
+		t.Errorf("OCR.MaxConcurrent = %d, want 2", IntVal(cfg.OCR.MaxConcurrent))
 	}
 	if cfg.OCR.Quality == nil {
 		t.Fatal("OCR.Quality is nil")
 	}
-	if floatVal(cfg.OCR.Quality.BlurThreshold) != 100.0 {
-		t.Errorf("OCR.Quality.BlurThreshold = %f, want 100.0", floatVal(cfg.OCR.Quality.BlurThreshold))
+	if FloatVal(cfg.OCR.Quality.BlurThreshold) != 100.0 {
+		t.Errorf("OCR.Quality.BlurThreshold = %f, want 100.0", FloatVal(cfg.OCR.Quality.BlurThreshold))
 	}
 
 	// Apply
 	if cfg.Apply == nil {
 		t.Fatal("Apply config is nil")
 	}
-	if strVal(cfg.Apply.FilenameTemplate) != "{autor} - {titulo} ({anio})" {
-		t.Errorf("Apply.FilenameTemplate = %q", strVal(cfg.Apply.FilenameTemplate))
+	if StrVal(cfg.Apply.FilenameTemplate) != "{autor} - {titulo} ({anio})" {
+		t.Errorf("Apply.FilenameTemplate = %q", StrVal(cfg.Apply.FilenameTemplate))
 	}
-	if strVal(cfg.Apply.Compression) != "ocrmypdf" {
-		t.Errorf("Apply.Compression = %q, want ocrmypdf", strVal(cfg.Apply.Compression))
+	if StrVal(cfg.Apply.Compression) != "ocrmypdf" {
+		t.Errorf("Apply.Compression = %q, want ocrmypdf", StrVal(cfg.Apply.Compression))
 	}
-	if strVal(cfg.Apply.Conflict) != "suffix" {
-		t.Errorf("Apply.Conflict = %q, want suffix", strVal(cfg.Apply.Conflict))
+	if StrVal(cfg.Apply.Conflict) != "suffix" {
+		t.Errorf("Apply.Conflict = %q, want suffix", StrVal(cfg.Apply.Conflict))
 	}
 	if cfg.Apply.BackupCompress == nil || !*cfg.Apply.BackupCompress {
 		t.Error("Apply.BackupCompress should default to true")
 	}
-	if intVal(cfg.Apply.BackupMaxCount) != 5 {
-		t.Errorf("Apply.BackupMaxCount = %d, want 5", intVal(cfg.Apply.BackupMaxCount))
+	if IntVal(cfg.Apply.BackupMaxCount) != 5 {
+		t.Errorf("Apply.BackupMaxCount = %d, want 5", IntVal(cfg.Apply.BackupMaxCount))
 	}
 
 	// Kavita
@@ -200,8 +200,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Kavita.Enabled != nil && *cfg.Kavita.Enabled {
 		t.Error("Kavita.Enabled should default to false")
 	}
-	if intVal(cfg.Kavita.Port) != 5000 {
-		t.Errorf("Kavita.Port = %d, want 5000", intVal(cfg.Kavita.Port))
+	if IntVal(cfg.Kavita.Port) != 5000 {
+		t.Errorf("Kavita.Port = %d, want 5000", IntVal(cfg.Kavita.Port))
 	}
 }
 
@@ -237,27 +237,27 @@ func TestExpandTilde(t *testing.T) {
 
 func TestMergeGeneral(t *testing.T) {
 	dst := &GeneralConfig{
-		Root:         strPtr("~"),
-		LibraryDir:   strPtr("~/Library"),
-		ManifestPath: strPtr("~/.local/share/lfx/manifest.db"),
-		LogLevel:     strPtr("info"),
-		DryRun:       boolPtr(true),
+		Root:         StrPtr("~"),
+		LibraryDir:   StrPtr("~/Library"),
+		ManifestPath: StrPtr("~/.local/share/lfx/manifest.db"),
+		LogLevel:     StrPtr("info"),
+		DryRun:       BoolPtr(true),
 	}
 	src := &GeneralConfig{
-		Root:     strPtr("/custom/root"),
-		LogLevel: strPtr("debug"),
+		Root:     StrPtr("/custom/root"),
+		LogLevel: StrPtr("debug"),
 	}
 
 	mergeGeneral(dst, src)
 
-	if strVal(dst.Root) != "/custom/root" {
-		t.Errorf("Root = %q, want /custom/root", strVal(dst.Root))
+	if StrVal(dst.Root) != "/custom/root" {
+		t.Errorf("Root = %q, want /custom/root", StrVal(dst.Root))
 	}
-	if strVal(dst.LibraryDir) != "~/Library" {
-		t.Errorf("LibraryDir should not change, got %q", strVal(dst.LibraryDir))
+	if StrVal(dst.LibraryDir) != "~/Library" {
+		t.Errorf("LibraryDir should not change, got %q", StrVal(dst.LibraryDir))
 	}
-	if strVal(dst.LogLevel) != "debug" {
-		t.Errorf("LogLevel = %q, want debug", strVal(dst.LogLevel))
+	if StrVal(dst.LogLevel) != "debug" {
+		t.Errorf("LogLevel = %q, want debug", StrVal(dst.LogLevel))
 	}
 	if dst.DryRun == nil || !*dst.DryRun {
 		t.Error("DryRun should remain true")
@@ -266,11 +266,11 @@ func TestMergeGeneral(t *testing.T) {
 
 func TestMergeGeneral_DryRunOverride(t *testing.T) {
 	dst := &GeneralConfig{
-		Root:   strPtr("~"),
-		DryRun: boolPtr(true),
+		Root:   StrPtr("~"),
+		DryRun: BoolPtr(true),
 	}
 	src := &GeneralConfig{
-		DryRun: boolPtr(false),
+		DryRun: BoolPtr(false),
 	}
 
 	mergeGeneral(dst, src)
@@ -285,11 +285,11 @@ func TestMergeGeneral_DryRunOverride(t *testing.T) {
 
 func TestMergeGeneral_DryRunNilSrc(t *testing.T) {
 	dst := &GeneralConfig{
-		Root:   strPtr("~"),
-		DryRun: boolPtr(true),
+		Root:   StrPtr("~"),
+		DryRun: BoolPtr(true),
 	}
 	src := &GeneralConfig{
-		Root: strPtr("/new/root"),
+		Root: StrPtr("/new/root"),
 	}
 
 	mergeGeneral(dst, src)
@@ -301,30 +301,30 @@ func TestMergeGeneral_DryRunNilSrc(t *testing.T) {
 
 func TestMergeScan(t *testing.T) {
 	dst := &ScanConfig{
-		MaxDepth:      intPtr(5),
-		MinFileSizeKB: intPtr(10),
-		MaxFileSizeMB: intPtr(500),
+		MaxDepth:      IntPtr(5),
+		MinFileSizeKB: IntPtr(10),
+		MaxFileSizeMB: IntPtr(500),
 		Extensions:    []string{"pdf"},
 		ExcludeDirs:   []string{"Library"},
 	}
 	src := &ScanConfig{
-		MaxDepth:      intPtr(3),
-		MinFileSizeKB: intPtr(20),
-		MaxFileSizeMB: intPtr(100),
+		MaxDepth:      IntPtr(3),
+		MinFileSizeKB: IntPtr(20),
+		MaxFileSizeMB: IntPtr(100),
 		Extensions:    []string{"pdf", "djvu"},
 		ExcludeDirs:   []string{"node_modules"},
 	}
 
 	mergeScan(dst, src)
 
-	if intVal(dst.MaxDepth) != 3 {
-		t.Errorf("MaxDepth = %d, want 3", intVal(dst.MaxDepth))
+	if IntVal(dst.MaxDepth) != 3 {
+		t.Errorf("MaxDepth = %d, want 3", IntVal(dst.MaxDepth))
 	}
-	if intVal(dst.MinFileSizeKB) != 20 {
-		t.Errorf("MinFileSizeKB = %d, want 20", intVal(dst.MinFileSizeKB))
+	if IntVal(dst.MinFileSizeKB) != 20 {
+		t.Errorf("MinFileSizeKB = %d, want 20", IntVal(dst.MinFileSizeKB))
 	}
-	if intVal(dst.MaxFileSizeMB) != 100 {
-		t.Errorf("MaxFileSizeMB = %d, want 100", intVal(dst.MaxFileSizeMB))
+	if IntVal(dst.MaxFileSizeMB) != 100 {
+		t.Errorf("MaxFileSizeMB = %d, want 100", IntVal(dst.MaxFileSizeMB))
 	}
 	if len(dst.Extensions) != 2 {
 		t.Errorf("Extensions = %v, want [pdf djvu]", dst.Extensions)
@@ -336,57 +336,57 @@ func TestMergeScan(t *testing.T) {
 
 func TestMergeLLM(t *testing.T) {
 	dst := &LLMConfig{
-		Provider:            strPtr("ollama"),
-		Model:               strPtr("qwen3:8b"),
-		FallbackModel:       strPtr("llama3.3:8b"),
-		ConfidenceThreshold: floatPtr(0.7),
-		ConfidenceWarning:   floatPtr(0.9),
-		Temperature:         floatPtr(0.2),
-		MaxConcurrent:       intPtr(3),
-		TimeoutSeconds:      intPtr(60),
+		Provider:            StrPtr("ollama"),
+		Model:               StrPtr("qwen3:8b"),
+		FallbackModel:       StrPtr("llama3.3:8b"),
+		ConfidenceThreshold: FloatPtr(0.7),
+		ConfidenceWarning:   FloatPtr(0.9),
+		Temperature:         FloatPtr(0.2),
+		MaxConcurrent:       IntPtr(3),
+		TimeoutSeconds:      IntPtr(60),
 		LocalOnlyCategories: []string{"Personal"},
-		Retry:               boolPtr(true),
-		MaxRetries:          intPtr(2),
+		Retry:               BoolPtr(true),
+		MaxRetries:          IntPtr(2),
 	}
 	src := &LLMConfig{
-		Provider:            strPtr("groq"),
-		Model:               strPtr("llama3.1:8b"),
-		FallbackModel:       strPtr("qwen3:8b"),
-		ConfidenceThreshold: floatPtr(0.8),
-		ConfidenceWarning:   floatPtr(0.95),
-		Temperature:         floatPtr(0.5),
-		MaxConcurrent:       intPtr(5),
-		TimeoutSeconds:      intPtr(120),
+		Provider:            StrPtr("groq"),
+		Model:               StrPtr("llama3.1:8b"),
+		FallbackModel:       StrPtr("qwen3:8b"),
+		ConfidenceThreshold: FloatPtr(0.8),
+		ConfidenceWarning:   FloatPtr(0.95),
+		Temperature:         FloatPtr(0.5),
+		MaxConcurrent:       IntPtr(5),
+		TimeoutSeconds:      IntPtr(120),
 		LocalOnlyCategories: []string{"Admin"},
-		Retry:               boolPtr(false),
-		MaxRetries:          intPtr(3),
+		Retry:               BoolPtr(false),
+		MaxRetries:          IntPtr(3),
 	}
 
 	mergeLLM(dst, src)
 
-	if strVal(dst.Provider) != "groq" {
-		t.Errorf("Provider = %q, want groq", strVal(dst.Provider))
+	if StrVal(dst.Provider) != "groq" {
+		t.Errorf("Provider = %q, want groq", StrVal(dst.Provider))
 	}
-	if strVal(dst.Model) != "llama3.1:8b" {
-		t.Errorf("Model = %q, want llama3.1:8b", strVal(dst.Model))
+	if StrVal(dst.Model) != "llama3.1:8b" {
+		t.Errorf("Model = %q, want llama3.1:8b", StrVal(dst.Model))
 	}
-	if strVal(dst.FallbackModel) != "qwen3:8b" {
-		t.Errorf("FallbackModel = %q, want qwen3:8b", strVal(dst.FallbackModel))
+	if StrVal(dst.FallbackModel) != "qwen3:8b" {
+		t.Errorf("FallbackModel = %q, want qwen3:8b", StrVal(dst.FallbackModel))
 	}
-	if floatVal(dst.ConfidenceThreshold) != 0.8 {
-		t.Errorf("ConfidenceThreshold = %f, want 0.8", floatVal(dst.ConfidenceThreshold))
+	if FloatVal(dst.ConfidenceThreshold) != 0.8 {
+		t.Errorf("ConfidenceThreshold = %f, want 0.8", FloatVal(dst.ConfidenceThreshold))
 	}
-	if floatVal(dst.ConfidenceWarning) != 0.95 {
-		t.Errorf("ConfidenceWarning = %f, want 0.95", floatVal(dst.ConfidenceWarning))
+	if FloatVal(dst.ConfidenceWarning) != 0.95 {
+		t.Errorf("ConfidenceWarning = %f, want 0.95", FloatVal(dst.ConfidenceWarning))
 	}
-	if floatVal(dst.Temperature) != 0.5 {
-		t.Errorf("Temperature = %f, want 0.5", floatVal(dst.Temperature))
+	if FloatVal(dst.Temperature) != 0.5 {
+		t.Errorf("Temperature = %f, want 0.5", FloatVal(dst.Temperature))
 	}
-	if intVal(dst.MaxConcurrent) != 5 {
-		t.Errorf("MaxConcurrent = %d, want 5", intVal(dst.MaxConcurrent))
+	if IntVal(dst.MaxConcurrent) != 5 {
+		t.Errorf("MaxConcurrent = %d, want 5", IntVal(dst.MaxConcurrent))
 	}
-	if intVal(dst.TimeoutSeconds) != 120 {
-		t.Errorf("TimeoutSeconds = %d, want 120", intVal(dst.TimeoutSeconds))
+	if IntVal(dst.TimeoutSeconds) != 120 {
+		t.Errorf("TimeoutSeconds = %d, want 120", IntVal(dst.TimeoutSeconds))
 	}
 	if dst.LocalOnlyCategories[0] != "Admin" {
 		t.Errorf("LocalOnlyCategories = %v, want [Admin]", dst.LocalOnlyCategories)
@@ -394,67 +394,67 @@ func TestMergeLLM(t *testing.T) {
 	if dst.Retry == nil || *dst.Retry {
 		t.Error("Retry should be false")
 	}
-	if intVal(dst.MaxRetries) != 3 {
-		t.Errorf("MaxRetries = %d, want 3", intVal(dst.MaxRetries))
+	if IntVal(dst.MaxRetries) != 3 {
+		t.Errorf("MaxRetries = %d, want 3", IntVal(dst.MaxRetries))
 	}
 }
 
 func TestMergeLibrary(t *testing.T) {
 	dst := &LibraryConfig{
-		Layout: strPtr("{tipo}/{subject}"),
+		Layout: StrPtr("{tipo}/{subject}"),
 		Types: &LibraryTypes{
 			ValidTypes: []string{"Libro", "Paper"},
 		},
 		Subjects: &LibrarySubjects{
-			Strategy:       strPtr("emergente"),
-			MergeThreshold: floatPtr(0.8),
+			Strategy:       StrPtr("emergente"),
+			MergeThreshold: FloatPtr(0.8),
 		},
 	}
 	src := &LibraryConfig{
-		Layout: strPtr("{subject}/{tipo}"),
+		Layout: StrPtr("{subject}/{tipo}"),
 		Subjects: &LibrarySubjects{
-			MergeThreshold: floatPtr(0.9),
+			MergeThreshold: FloatPtr(0.9),
 		},
 	}
 
 	mergeLibrary(dst, src)
 
-	if strVal(dst.Layout) != "{subject}/{tipo}" {
-		t.Errorf("Layout = %q, want {subject}/{tipo}", strVal(dst.Layout))
+	if StrVal(dst.Layout) != "{subject}/{tipo}" {
+		t.Errorf("Layout = %q, want {subject}/{tipo}", StrVal(dst.Layout))
 	}
 	if len(dst.Types.ValidTypes) != 2 {
 		t.Errorf("Types.ValidTypes should not change, got %v", dst.Types.ValidTypes)
 	}
-	if strVal(dst.Subjects.Strategy) != "emergente" {
-		t.Errorf("Strategy should not change, got %q", strVal(dst.Subjects.Strategy))
+	if StrVal(dst.Subjects.Strategy) != "emergente" {
+		t.Errorf("Strategy should not change, got %q", StrVal(dst.Subjects.Strategy))
 	}
-	if floatVal(dst.Subjects.MergeThreshold) != 0.9 {
-		t.Errorf("MergeThreshold = %f, want 0.9", floatVal(dst.Subjects.MergeThreshold))
+	if FloatVal(dst.Subjects.MergeThreshold) != 0.9 {
+		t.Errorf("MergeThreshold = %f, want 0.9", FloatVal(dst.Subjects.MergeThreshold))
 	}
 }
 
 func TestMergeLibrary_StrategyOverride(t *testing.T) {
 	dst := &LibraryConfig{
 		Subjects: &LibrarySubjects{
-			Strategy: strPtr("emergente"),
+			Strategy: StrPtr("emergente"),
 		},
 	}
 	src := &LibraryConfig{
 		Subjects: &LibrarySubjects{
-			Strategy: strPtr("predefinida"),
+			Strategy: StrPtr("predefinida"),
 		},
 	}
 
 	mergeLibrary(dst, src)
 
-	if strVal(dst.Subjects.Strategy) != "predefinida" {
-		t.Errorf("Strategy = %q, want predefinida", strVal(dst.Subjects.Strategy))
+	if StrVal(dst.Subjects.Strategy) != "predefinida" {
+		t.Errorf("Strategy = %q, want predefinida", StrVal(dst.Subjects.Strategy))
 	}
 }
 
 func TestMergeLibrary_NilSections(t *testing.T) {
 	dst := &LibraryConfig{
-		Layout: strPtr("{tipo}/{subject}"),
+		Layout: StrPtr("{tipo}/{subject}"),
 	}
 	src := &LibraryConfig{
 		Types: &LibraryTypes{
@@ -474,8 +474,8 @@ func TestMergeLibrary_NilSections(t *testing.T) {
 
 func TestMergeMetadata(t *testing.T) {
 	dst := &MetadataConfig{
-		EbookMetaPath:     strPtr("ebook-meta"),
-		FetchMetadataPath: strPtr("fetch-ebook-metadata"),
+		EbookMetaPath:     StrPtr("ebook-meta"),
+		FetchMetadataPath: StrPtr("fetch-ebook-metadata"),
 		MetadataSources:   []string{"google_books"},
 	}
 	src := &MetadataConfig{
@@ -484,11 +484,11 @@ func TestMergeMetadata(t *testing.T) {
 
 	mergeMetadata(dst, src)
 
-	if strVal(dst.EbookMetaPath) != "ebook-meta" {
-		t.Errorf("EbookMetaPath should not change, got %q", strVal(dst.EbookMetaPath))
+	if StrVal(dst.EbookMetaPath) != "ebook-meta" {
+		t.Errorf("EbookMetaPath should not change, got %q", StrVal(dst.EbookMetaPath))
 	}
-	if strVal(dst.FetchMetadataPath) != "fetch-ebook-metadata" {
-		t.Errorf("FetchMetadataPath should not change, got %q", strVal(dst.FetchMetadataPath))
+	if StrVal(dst.FetchMetadataPath) != "fetch-ebook-metadata" {
+		t.Errorf("FetchMetadataPath should not change, got %q", StrVal(dst.FetchMetadataPath))
 	}
 	if len(dst.MetadataSources) != 2 {
 		t.Errorf("MetadataSources should be overwritten, got %v", dst.MetadataSources)
@@ -497,38 +497,38 @@ func TestMergeMetadata(t *testing.T) {
 
 func TestMergeMetadata_PathOverrides(t *testing.T) {
 	dst := &MetadataConfig{
-		EbookMetaPath:     strPtr("ebook-meta"),
-		FetchMetadataPath: strPtr("fetch-ebook-metadata"),
+		EbookMetaPath:     StrPtr("ebook-meta"),
+		FetchMetadataPath: StrPtr("fetch-ebook-metadata"),
 	}
 	src := &MetadataConfig{
-		EbookMetaPath:     strPtr("/usr/local/bin/ebook-meta"),
-		FetchMetadataPath: strPtr("/usr/local/bin/fetch-ebook-metadata"),
+		EbookMetaPath:     StrPtr("/usr/local/bin/ebook-meta"),
+		FetchMetadataPath: StrPtr("/usr/local/bin/fetch-ebook-metadata"),
 	}
 
 	mergeMetadata(dst, src)
 
-	if strVal(dst.EbookMetaPath) != "/usr/local/bin/ebook-meta" {
-		t.Errorf("EbookMetaPath = %q, want /usr/local/bin/ebook-meta", strVal(dst.EbookMetaPath))
+	if StrVal(dst.EbookMetaPath) != "/usr/local/bin/ebook-meta" {
+		t.Errorf("EbookMetaPath = %q, want /usr/local/bin/ebook-meta", StrVal(dst.EbookMetaPath))
 	}
-	if strVal(dst.FetchMetadataPath) != "/usr/local/bin/fetch-ebook-metadata" {
-		t.Errorf("FetchMetadataPath = %q, want /usr/local/bin/fetch-ebook-metadata", strVal(dst.FetchMetadataPath))
+	if StrVal(dst.FetchMetadataPath) != "/usr/local/bin/fetch-ebook-metadata" {
+		t.Errorf("FetchMetadataPath = %q, want /usr/local/bin/fetch-ebook-metadata", StrVal(dst.FetchMetadataPath))
 	}
 }
 
 func TestMergeOCR(t *testing.T) {
 	dst := &OCRConfig{
 		Languages:     []string{"eng"},
-		MaxConcurrent: intPtr(2),
+		MaxConcurrent: IntPtr(2),
 		Quality: &OCRQuality{
-			BlurThreshold:     floatPtr(100.0),
-			SkewThreshold:     floatPtr(2.0),
-			ContrastMinSpread: floatPtr(30.0),
+			BlurThreshold:     FloatPtr(100.0),
+			SkewThreshold:     FloatPtr(2.0),
+			ContrastMinSpread: FloatPtr(30.0),
 		},
 	}
 	src := &OCRConfig{
 		Languages: []string{"spa", "deu"},
 		Quality: &OCRQuality{
-			BlurThreshold: floatPtr(150.0),
+			BlurThreshold: FloatPtr(150.0),
 		},
 	}
 
@@ -537,29 +537,29 @@ func TestMergeOCR(t *testing.T) {
 	if len(dst.Languages) != 2 || dst.Languages[0] != "spa" {
 		t.Errorf("Languages = %v, want [spa deu]", dst.Languages)
 	}
-	if intVal(dst.MaxConcurrent) != 2 {
-		t.Errorf("MaxConcurrent should not change, got %d", intVal(dst.MaxConcurrent))
+	if IntVal(dst.MaxConcurrent) != 2 {
+		t.Errorf("MaxConcurrent should not change, got %d", IntVal(dst.MaxConcurrent))
 	}
-	if floatVal(dst.Quality.BlurThreshold) != 150.0 {
-		t.Errorf("BlurThreshold = %f, want 150.0", floatVal(dst.Quality.BlurThreshold))
+	if FloatVal(dst.Quality.BlurThreshold) != 150.0 {
+		t.Errorf("BlurThreshold = %f, want 150.0", FloatVal(dst.Quality.BlurThreshold))
 	}
-	if floatVal(dst.Quality.SkewThreshold) != 2.0 {
-		t.Errorf("SkewThreshold should not change, got %f", floatVal(dst.Quality.SkewThreshold))
+	if FloatVal(dst.Quality.SkewThreshold) != 2.0 {
+		t.Errorf("SkewThreshold should not change, got %f", FloatVal(dst.Quality.SkewThreshold))
 	}
 }
 
 func TestMergeOCR_MaxConcurrentOverride(t *testing.T) {
 	dst := &OCRConfig{
-		MaxConcurrent: intPtr(2),
+		MaxConcurrent: IntPtr(2),
 	}
 	src := &OCRConfig{
-		MaxConcurrent: intPtr(4),
+		MaxConcurrent: IntPtr(4),
 	}
 
 	mergeOCR(dst, src)
 
-	if intVal(dst.MaxConcurrent) != 4 {
-		t.Errorf("MaxConcurrent = %d, want 4", intVal(dst.MaxConcurrent))
+	if IntVal(dst.MaxConcurrent) != 4 {
+		t.Errorf("MaxConcurrent = %d, want 4", IntVal(dst.MaxConcurrent))
 	}
 }
 
@@ -569,7 +569,7 @@ func TestMergeOCR_NilQuality(t *testing.T) {
 	}
 	src := &OCRConfig{
 		Quality: &OCRQuality{
-			BlurThreshold: floatPtr(150.0),
+			BlurThreshold: FloatPtr(150.0),
 		},
 	}
 
@@ -578,65 +578,65 @@ func TestMergeOCR_NilQuality(t *testing.T) {
 	if dst.Quality == nil {
 		t.Fatal("Quality should be created from src")
 	}
-	if floatVal(dst.Quality.BlurThreshold) != 150.0 {
-		t.Errorf("BlurThreshold = %f, want 150.0", floatVal(dst.Quality.BlurThreshold))
+	if FloatVal(dst.Quality.BlurThreshold) != 150.0 {
+		t.Errorf("BlurThreshold = %f, want 150.0", FloatVal(dst.Quality.BlurThreshold))
 	}
 }
 
 func TestMergeApply(t *testing.T) {
 	dst := &ApplyConfig{
-		FilenameTemplate: strPtr("{autor} - {titulo} ({anio})"),
-		Compression:      strPtr("ocrmypdf"),
-		Conflict:         strPtr("suffix"),
-		BackupDir:        strPtr("{library_dir}/.backups"),
-		BackupCompress:   boolPtr(true),
-		BackupMaxCount:   intPtr(5),
-		BackupMaxAgeDays: intPtr(30),
+		FilenameTemplate: StrPtr("{autor} - {titulo} ({anio})"),
+		Compression:      StrPtr("ocrmypdf"),
+		Conflict:         StrPtr("suffix"),
+		BackupDir:        StrPtr("{library_dir}/.backups"),
+		BackupCompress:   BoolPtr(true),
+		BackupMaxCount:   IntPtr(5),
+		BackupMaxAgeDays: IntPtr(30),
 	}
 	src := &ApplyConfig{
-		FilenameTemplate: strPtr("{titulo} - {autor}.pdf"),
-		Compression:      strPtr("ghostscript"),
-		Conflict:         strPtr("overwrite"),
-		BackupDir:        strPtr("/backups"),
-		BackupCompress:   boolPtr(false),
-		BackupMaxCount:   intPtr(10),
-		BackupMaxAgeDays: intPtr(60),
+		FilenameTemplate: StrPtr("{titulo} - {autor}.pdf"),
+		Compression:      StrPtr("ghostscript"),
+		Conflict:         StrPtr("overwrite"),
+		BackupDir:        StrPtr("/backups"),
+		BackupCompress:   BoolPtr(false),
+		BackupMaxCount:   IntPtr(10),
+		BackupMaxAgeDays: IntPtr(60),
 	}
 
 	mergeApply(dst, src)
 
-	if strVal(dst.FilenameTemplate) != "{titulo} - {autor}.pdf" {
-		t.Errorf("FilenameTemplate = %q", strVal(dst.FilenameTemplate))
+	if StrVal(dst.FilenameTemplate) != "{titulo} - {autor}.pdf" {
+		t.Errorf("FilenameTemplate = %q", StrVal(dst.FilenameTemplate))
 	}
-	if strVal(dst.Compression) != "ghostscript" {
-		t.Errorf("Compression = %q, want ghostscript", strVal(dst.Compression))
+	if StrVal(dst.Compression) != "ghostscript" {
+		t.Errorf("Compression = %q, want ghostscript", StrVal(dst.Compression))
 	}
-	if strVal(dst.Conflict) != "overwrite" {
-		t.Errorf("Conflict = %q, want overwrite", strVal(dst.Conflict))
+	if StrVal(dst.Conflict) != "overwrite" {
+		t.Errorf("Conflict = %q, want overwrite", StrVal(dst.Conflict))
 	}
-	if strVal(dst.BackupDir) != "/backups" {
-		t.Errorf("BackupDir = %q, want /backups", strVal(dst.BackupDir))
+	if StrVal(dst.BackupDir) != "/backups" {
+		t.Errorf("BackupDir = %q, want /backups", StrVal(dst.BackupDir))
 	}
 	if dst.BackupCompress == nil || *dst.BackupCompress {
 		t.Error("BackupCompress should be false")
 	}
-	if intVal(dst.BackupMaxCount) != 10 {
-		t.Errorf("BackupMaxCount = %d, want 10", intVal(dst.BackupMaxCount))
+	if IntVal(dst.BackupMaxCount) != 10 {
+		t.Errorf("BackupMaxCount = %d, want 10", IntVal(dst.BackupMaxCount))
 	}
-	if intVal(dst.BackupMaxAgeDays) != 60 {
-		t.Errorf("BackupMaxAgeDays = %d, want 60", intVal(dst.BackupMaxAgeDays))
+	if IntVal(dst.BackupMaxAgeDays) != 60 {
+		t.Errorf("BackupMaxAgeDays = %d, want 60", IntVal(dst.BackupMaxAgeDays))
 	}
 }
 
 func TestMergeKavita(t *testing.T) {
 	dst := &KavitaConfig{
-		Enabled:           boolPtr(false),
-		DockerComposePath: strPtr("~/.config/lfx/docker-compose.kavita.yml"),
-		Port:              intPtr(5000),
+		Enabled:           BoolPtr(false),
+		DockerComposePath: StrPtr("~/.config/lfx/docker-compose.kavita.yml"),
+		Port:              IntPtr(5000),
 	}
 	src := &KavitaConfig{
-		Enabled: boolPtr(true),
-		Port:    intPtr(8080),
+		Enabled: BoolPtr(true),
+		Port:    IntPtr(8080),
 	}
 
 	mergeKavita(dst, src)
@@ -644,11 +644,11 @@ func TestMergeKavita(t *testing.T) {
 	if dst.Enabled == nil || !*dst.Enabled {
 		t.Error("Enabled should be true")
 	}
-	if intVal(dst.Port) != 8080 {
-		t.Errorf("Port = %d, want 8080", intVal(dst.Port))
+	if IntVal(dst.Port) != 8080 {
+		t.Errorf("Port = %d, want 8080", IntVal(dst.Port))
 	}
-	if strVal(dst.DockerComposePath) != "~/.config/lfx/docker-compose.kavita.yml" {
-		t.Errorf("DockerComposePath should not change, got %q", strVal(dst.DockerComposePath))
+	if StrVal(dst.DockerComposePath) != "~/.config/lfx/docker-compose.kavita.yml" {
+		t.Errorf("DockerComposePath should not change, got %q", StrVal(dst.DockerComposePath))
 	}
 }
 
@@ -656,25 +656,25 @@ func TestMergeFullConfig(t *testing.T) {
 	dst := DefaultConfig()
 	src := &Config{
 		General: &GeneralConfig{
-			Root:     strPtr("/custom"),
-			LogLevel: strPtr("debug"),
+			Root:     StrPtr("/custom"),
+			LogLevel: StrPtr("debug"),
 		},
 		LLM: &LLMConfig{
-			Provider: strPtr("groq"),
+			Provider: StrPtr("groq"),
 		},
 	}
 
 	merge(dst, src)
 
-	if strVal(dst.General.Root) != "/custom" {
-		t.Errorf("General.Root = %q, want /custom", strVal(dst.General.Root))
+	if StrVal(dst.General.Root) != "/custom" {
+		t.Errorf("General.Root = %q, want /custom", StrVal(dst.General.Root))
 	}
-	if strVal(dst.LLM.Provider) != "groq" {
-		t.Errorf("LLM.Provider = %q, want groq", strVal(dst.LLM.Provider))
+	if StrVal(dst.LLM.Provider) != "groq" {
+		t.Errorf("LLM.Provider = %q, want groq", StrVal(dst.LLM.Provider))
 	}
 	// Preserved defaults
-	if strVal(dst.LLM.Model) != "qwen3:8b" {
-		t.Errorf("LLM.Model should be preserved, got %q", strVal(dst.LLM.Model))
+	if StrVal(dst.LLM.Model) != "qwen3:8b" {
+		t.Errorf("LLM.Model should be preserved, got %q", StrVal(dst.LLM.Model))
 	}
 }
 
@@ -682,7 +682,7 @@ func TestMergeAllSections(t *testing.T) {
 	dst := DefaultConfig()
 	src := &Config{
 		Library: &LibraryConfig{
-			Layout: strPtr("{subject}/{tipo}"),
+			Layout: StrPtr("{subject}/{tipo}"),
 		},
 		Metadata: &MetadataConfig{
 			MetadataSources: []string{"amazon"},
@@ -691,18 +691,18 @@ func TestMergeAllSections(t *testing.T) {
 			Languages: []string{"deu"},
 		},
 		Apply: &ApplyConfig{
-			Compression: strPtr("ghostscript"),
+			Compression: StrPtr("ghostscript"),
 		},
 		Kavita: &KavitaConfig{
-			Enabled: boolPtr(true),
-			Port:    intPtr(8080),
+			Enabled: BoolPtr(true),
+			Port:    IntPtr(8080),
 		},
 	}
 
 	merge(dst, src)
 
-	if strVal(dst.Library.Layout) != "{subject}/{tipo}" {
-		t.Errorf("Library.Layout = %q", strVal(dst.Library.Layout))
+	if StrVal(dst.Library.Layout) != "{subject}/{tipo}" {
+		t.Errorf("Library.Layout = %q", StrVal(dst.Library.Layout))
 	}
 	if dst.Metadata.MetadataSources[0] != "amazon" {
 		t.Errorf("Metadata.MetadataSources = %v", dst.Metadata.MetadataSources)
@@ -710,8 +710,8 @@ func TestMergeAllSections(t *testing.T) {
 	if dst.OCR.Languages[0] != "deu" {
 		t.Errorf("OCR.Languages = %v", dst.OCR.Languages)
 	}
-	if strVal(dst.Apply.Compression) != "ghostscript" {
-		t.Errorf("Apply.Compression = %q", strVal(dst.Apply.Compression))
+	if StrVal(dst.Apply.Compression) != "ghostscript" {
+		t.Errorf("Apply.Compression = %q", StrVal(dst.Apply.Compression))
 	}
 	if dst.Kavita.Enabled == nil || !*dst.Kavita.Enabled {
 		t.Error("Kavita.Enabled should be true")
@@ -757,18 +757,18 @@ model = "llama3.3:8b"
 		t.Fatalf("LoadFrom() error = %v", err)
 	}
 
-	if strVal(cfg.General.Root) != "/tmp/test-root" {
-		t.Errorf("General.Root = %q, want /tmp/test-root", strVal(cfg.General.Root))
+	if StrVal(cfg.General.Root) != "/tmp/test-root" {
+		t.Errorf("General.Root = %q, want /tmp/test-root", StrVal(cfg.General.Root))
 	}
-	if strVal(cfg.General.LogLevel) != "debug" {
-		t.Errorf("General.LogLevel = %q, want debug", strVal(cfg.General.LogLevel))
+	if StrVal(cfg.General.LogLevel) != "debug" {
+		t.Errorf("General.LogLevel = %q, want debug", StrVal(cfg.General.LogLevel))
 	}
-	if strVal(cfg.LLM.Provider) != "groq" {
-		t.Errorf("LLM.Provider = %q, want groq", strVal(cfg.LLM.Provider))
+	if StrVal(cfg.LLM.Provider) != "groq" {
+		t.Errorf("LLM.Provider = %q, want groq", StrVal(cfg.LLM.Provider))
 	}
 	// Defaults should be preserved
-	if floatVal(cfg.LLM.ConfidenceThreshold) != 0.7 {
-		t.Errorf("LLM.ConfidenceThreshold = %f, want 0.7 (default preserved)", floatVal(cfg.LLM.ConfidenceThreshold))
+	if FloatVal(cfg.LLM.ConfidenceThreshold) != 0.7 {
+		t.Errorf("LLM.ConfidenceThreshold = %f, want 0.7 (default preserved)", FloatVal(cfg.LLM.ConfidenceThreshold))
 	}
 	// DryRun should remain true (not in config file)
 	if cfg.General.DryRun == nil || !*cfg.General.DryRun {
@@ -845,7 +845,7 @@ func TestValidate(t *testing.T) {
 		{
 			name: "missing general",
 			cfg: &Config{
-				LLM: &LLMConfig{Provider: strPtr("ollama")},
+				LLM: &LLMConfig{Provider: StrPtr("ollama")},
 			},
 			wantErr: true,
 		},
@@ -853,11 +853,11 @@ func TestValidate(t *testing.T) {
 			name: "invalid log level",
 			cfg: &Config{
 				General: &GeneralConfig{
-					Root:         strPtr("~"),
-					LibraryDir:   strPtr("~/Library"),
-					ManifestPath: strPtr("~/.local/share/lfx/manifest.db"),
-					LogLevel:     strPtr("invalid"),
-					DryRun:       boolPtr(true),
+					Root:         StrPtr("~"),
+					LibraryDir:   StrPtr("~/Library"),
+					ManifestPath: StrPtr("~/.local/share/lfx/manifest.db"),
+					LogLevel:     StrPtr("invalid"),
+					DryRun:       BoolPtr(true),
 				},
 			},
 			wantErr: true,
@@ -866,14 +866,14 @@ func TestValidate(t *testing.T) {
 			name: "invalid provider",
 			cfg: &Config{
 				General: &GeneralConfig{
-					Root:         strPtr("~"),
-					LibraryDir:   strPtr("~/Library"),
-					ManifestPath: strPtr("~/.local/share/lfx/manifest.db"),
-					LogLevel:     strPtr("info"),
-					DryRun:       boolPtr(true),
+					Root:         StrPtr("~"),
+					LibraryDir:   StrPtr("~/Library"),
+					ManifestPath: StrPtr("~/.local/share/lfx/manifest.db"),
+					LogLevel:     StrPtr("info"),
+					DryRun:       BoolPtr(true),
 				},
 				LLM: &LLMConfig{
-					Provider: strPtr("openai"),
+					Provider: StrPtr("openai"),
 				},
 			},
 			wantErr: true,
@@ -882,14 +882,14 @@ func TestValidate(t *testing.T) {
 			name: "invalid compression",
 			cfg: &Config{
 				General: &GeneralConfig{
-					Root:         strPtr("~"),
-					LibraryDir:   strPtr("~/Library"),
-					ManifestPath: strPtr("~/.local/share/lfx/manifest.db"),
-					LogLevel:     strPtr("info"),
-					DryRun:       boolPtr(true),
+					Root:         StrPtr("~"),
+					LibraryDir:   StrPtr("~/Library"),
+					ManifestPath: StrPtr("~/.local/share/lfx/manifest.db"),
+					LogLevel:     StrPtr("info"),
+					DryRun:       BoolPtr(true),
 				},
 				Apply: &ApplyConfig{
-					Compression: strPtr("invalid"),
+					Compression: StrPtr("invalid"),
 				},
 			},
 			wantErr: true,
@@ -909,10 +909,10 @@ func TestValidate(t *testing.T) {
 func TestValidate_EmptyRequiredFields(t *testing.T) {
 	cfg := &Config{
 		General: &GeneralConfig{
-			Root:         strPtr(""),
-			LibraryDir:   strPtr(""),
-			ManifestPath: strPtr(""),
-			LogLevel:     strPtr("info"),
+			Root:         StrPtr(""),
+			LibraryDir:   StrPtr(""),
+			ManifestPath: StrPtr(""),
+			LogLevel:     StrPtr("info"),
 		},
 	}
 
@@ -924,8 +924,8 @@ func TestValidate_EmptyRequiredFields(t *testing.T) {
 
 func TestValidate_OutOfRangeValues(t *testing.T) {
 	cfg := DefaultConfig()
-	cfg.LLM.ConfidenceThreshold = floatPtr(1.5)
-	cfg.LLM.Temperature = floatPtr(3.0)
+	cfg.LLM.ConfidenceThreshold = FloatPtr(1.5)
+	cfg.LLM.Temperature = FloatPtr(3.0)
 
 	err := Validate(cfg)
 	if err == nil {
@@ -935,7 +935,7 @@ func TestValidate_OutOfRangeValues(t *testing.T) {
 
 func TestValidate_InvalidConflict(t *testing.T) {
 	cfg := DefaultConfig()
-	cfg.Apply.Conflict = strPtr("invalid")
+	cfg.Apply.Conflict = StrPtr("invalid")
 
 	err := Validate(cfg)
 	if err == nil {
@@ -1068,16 +1068,16 @@ func TestSchema_Defaults_MatchGoStruct(t *testing.T) {
 		field    string
 		expected interface{}
 	}{
-		{"GeneralConfig", "root", strVal(cfg.General.Root)},
-		{"GeneralConfig", "library_dir", strVal(cfg.General.LibraryDir)},
-		{"GeneralConfig", "log_level", strVal(cfg.General.LogLevel)},
-		{"LLMConfig", "provider", strVal(cfg.LLM.Provider)},
-		{"LLMConfig", "model", strVal(cfg.LLM.Model)},
-		{"LLMConfig", "confidence_threshold", floatVal(cfg.LLM.ConfidenceThreshold)},
-		{"LLMConfig", "temperature", floatVal(cfg.LLM.Temperature)},
-		{"ApplyConfig", "compression", strVal(cfg.Apply.Compression)},
-		{"ApplyConfig", "conflict", strVal(cfg.Apply.Conflict)},
-		{"KavitaConfig", "port", intVal(cfg.Kavita.Port)},
+		{"GeneralConfig", "root", StrVal(cfg.General.Root)},
+		{"GeneralConfig", "library_dir", StrVal(cfg.General.LibraryDir)},
+		{"GeneralConfig", "log_level", StrVal(cfg.General.LogLevel)},
+		{"LLMConfig", "provider", StrVal(cfg.LLM.Provider)},
+		{"LLMConfig", "model", StrVal(cfg.LLM.Model)},
+		{"LLMConfig", "confidence_threshold", FloatVal(cfg.LLM.ConfidenceThreshold)},
+		{"LLMConfig", "temperature", FloatVal(cfg.LLM.Temperature)},
+		{"ApplyConfig", "compression", StrVal(cfg.Apply.Compression)},
+		{"ApplyConfig", "conflict", StrVal(cfg.Apply.Conflict)},
+		{"KavitaConfig", "port", IntVal(cfg.Kavita.Port)},
 	}
 
 	for _, tt := range tests {
@@ -1107,4 +1107,51 @@ func TestSchema_Defaults_MatchGoStruct(t *testing.T) {
 func stringify(v interface{}) string {
 	data, _ := json.Marshal(v)
 	return string(data)
+}
+
+func TestResolveTemplateVars(t *testing.T) {
+	tests := []struct {
+		name          string
+		libraryDir    string
+		backupDir     string
+		wantBackupDir string
+	}{
+		{
+			name:          "resolves library_dir",
+			libraryDir:    "/Users/test/Biblioteca",
+			backupDir:     "{library_dir}/.backups",
+			wantBackupDir: "/Users/test/Biblioteca/.backups",
+		},
+		{
+			name:          "resolves root",
+			libraryDir:    "/Users/test/Biblioteca",
+			backupDir:     "{root}/backups",
+			wantBackupDir: "~/backups", // Root is "~", not expanded
+		},
+		{
+			name:          "no template vars",
+			libraryDir:    "/Users/test/Biblioteca",
+			backupDir:     "/absolute/path/.backups",
+			wantBackupDir: "/absolute/path/.backups",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &Config{
+				General: &GeneralConfig{
+					Root:       StrPtr("~"),
+					LibraryDir: StrPtr(tt.libraryDir),
+				},
+				Apply: &ApplyConfig{
+					BackupDir: StrPtr(tt.backupDir),
+				},
+			}
+			resolveTemplateVars(cfg)
+			got := StrVal(cfg.Apply.BackupDir)
+			if got != tt.wantBackupDir {
+				t.Errorf("BackupDir = %q, want %q", got, tt.wantBackupDir)
+			}
+		})
+	}
 }
