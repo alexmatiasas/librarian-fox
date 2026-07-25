@@ -5,7 +5,7 @@
 -- (too large). It serves as documentation of how the schema works.
 -- See docs/schema.md for the full schema reference.
 --
--- To run: sqlite3 /tmp/lfx_test.db < migrations/001_initial.sql
+-- To run: sqlite3 /tmp/lfx_test.db < internal/manifest/migrations/001_initial.sql
 --         sqlite3 /tmp/lfx_test.db < testdata/test_schema.sql
 -- ═══════════════════════════════════════════════════════
 

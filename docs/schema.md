@@ -2,7 +2,7 @@
 
 SQLite manifest database for lfx. Single file, zero config, portable.
 
-**Migration**: `migrations/001_initial.sql`
+**Migration**: `internal/manifest/migrations/001_initial.sql`
 
 ## Tables
 
