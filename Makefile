@@ -5,10 +5,10 @@ COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 LDFLAGS  = -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 
 build: schema
-	go build -ldflags "$(LDFLAGS)" -o lfx ./cmd/lfx
+	CGO_ENABLED=1 go build -tags "sqlite_fts5" -ldflags "$(LDFLAGS)" -o lfx ./cmd/lfx
 
 test:
-	go test -race -count=1 ./...
+	CGO_ENABLED=1 go test -tags "sqlite_fts5" -race -count=1 ./...
 
 lint:
 	golangci-lint run
