@@ -80,6 +80,7 @@ type ScanConfig struct {
 	MinFileSizeKB      *int     `json:"min_file_size_kb,omitempty" toml:"min_file_size_kb" jsonschema:"default=10,minimum=0,description=Ignore files smaller than this (in KB)"`
 	MaxFileSizeMB      *int     `json:"max_file_size_mb,omitempty" toml:"max_file_size_mb" jsonschema:"default=500,minimum=1,description=Ignore files larger than this (in MB)"`
 	ExcludeDirs        []string `json:"exclude_dirs,omitempty" toml:"exclude_dirs" jsonschema:"description=Directory names to skip during scanning (symlinks always skipped)"`
+	ExcludeGlobs       []string `json:"exclude_globs,omitempty" toml:"exclude_globs" jsonschema:"description=File glob patterns to exclude (e.g. *.tmp, *.bak)"`
 	Extensions         []string `json:"extensions,omitempty" toml:"extensions" jsonschema:"description=File extensions to process (without the dot)"`
 	MaxConcurrentFiles *int     `json:"max_concurrent_files,omitempty" toml:"max_concurrent_files" jsonschema:"default=4,minimum=1,maximum=16,description=Number of files to process in parallel during scan"`
 }
@@ -429,6 +430,9 @@ func mergeGeneral(dst, src *GeneralConfig) {
 	if src.DryRun != nil {
 		dst.DryRun = src.DryRun
 	}
+	if src.OutputFormat != nil {
+		dst.OutputFormat = src.OutputFormat
+	}
 }
 
 func mergeScan(dst, src *ScanConfig) {
@@ -443,6 +447,9 @@ func mergeScan(dst, src *ScanConfig) {
 	}
 	if len(src.ExcludeDirs) > 0 {
 		dst.ExcludeDirs = src.ExcludeDirs
+	}
+	if len(src.ExcludeGlobs) > 0 {
+		dst.ExcludeGlobs = src.ExcludeGlobs
 	}
 	if len(src.Extensions) > 0 {
 		dst.Extensions = src.Extensions

@@ -40,8 +40,11 @@ func newScanCmd() *cobra.Command {
 			maxDepth, _ := cmd.Flags().GetInt("max-depth")
 			extensions, _ := cmd.Flags().GetStringSlice("extension")
 			noDefaultExtensions, _ := cmd.Flags().GetBool("no-default-extensions")
+			excludeGlobs, _ := cmd.Flags().GetStringSlice("exclude-glob")
 			verbose, _ := cmd.Flags().GetBool("verbose")
 			format, _ := cmd.Flags().GetString("format")
+			noProgress, _ := cmd.Flags().GetBool("no-progress")
+			quiet, _ := cmd.Flags().GetBool("quiet")
 			var minSize, maxSize byteSize
 			if v, err := cmd.Flags().GetString("min-size"); err == nil && v != "" {
 				if err := minSize.Set(v); err != nil {
@@ -54,7 +57,6 @@ func newScanCmd() *cobra.Command {
 				}
 			}
 
-			// Positional arg overrides --root flag
 			if len(args) > 0 {
 				root = args[0]
 			}
@@ -80,8 +82,6 @@ func newScanCmd() *cobra.Command {
 				cfg.General.DryRun = config.BoolPtr(true)
 			}
 
-			// --exclude-dir is additive: appends to config defaults.
-			// Use --no-default-excludes to start from empty list.
 			if len(excludeDirs) > 0 {
 				if noDefaultExcludes {
 					cfg.Scan.ExcludeDirs = excludeDirs
@@ -94,7 +94,6 @@ func newScanCmd() *cobra.Command {
 				cfg.Scan.MaxDepth = config.IntPtr(maxDepth)
 			}
 
-			// --extension is additive, same pattern as exclude-dir.
 			if len(extensions) > 0 {
 				if noDefaultExtensions {
 					cfg.Scan.Extensions = extensions
@@ -106,7 +105,7 @@ func newScanCmd() *cobra.Command {
 			if minSize > 0 {
 				minKB := int(minSize / KB)
 				if minKB == 0 {
-					minKB = 1 // floor to 1KB minimum
+					minKB = 1
 				}
 				cfg.Scan.MinFileSizeKB = config.IntPtr(minKB)
 			}
@@ -116,6 +115,10 @@ func newScanCmd() *cobra.Command {
 					maxMB = 1
 				}
 				cfg.Scan.MaxFileSizeMB = config.IntPtr(maxMB)
+			}
+
+			if len(excludeGlobs) > 0 {
+				cfg.Scan.ExcludeGlobs = append(cfg.Scan.ExcludeGlobs, excludeGlobs...)
 			}
 
 			if logLevel == "" {
@@ -154,14 +157,15 @@ func newScanCmd() *cobra.Command {
 				format = config.StrVal(cfg.General.OutputFormat)
 			}
 
+			showProgress := !jsonOut && !statsOnly && !noProgress && !quiet
+
 			scanner := scan.New(cfg, db, logger)
 			scanner.DryRun = dryRun
 			scanner.StatsOnly = statsOnly
 
-			// Progress display goroutine: collect phase + scan bar [████░░░░]
 			var progress chan *scan.Event
 			var progressDone chan struct{}
-			if !jsonOut && !statsOnly {
+			if showProgress {
 				progress = make(chan *scan.Event, 100)
 				progressDone = make(chan struct{})
 				go func() {
@@ -169,7 +173,6 @@ func newScanCmd() *cobra.Command {
 					for e := range progress {
 						if e.Phase == "collect" {
 							if e.Total > 0 {
-								// Final collect event — terminate line for subsequent slog output
 								fmt.Fprintf(os.Stderr, "\rCollecting... %d files found...\n", e.Current)
 							} else {
 								fmt.Fprintf(os.Stderr, "\rCollecting... %d files found...", e.Current)
@@ -189,20 +192,18 @@ func newScanCmd() *cobra.Command {
 
 			result, err := scanner.Scan(ctx, config.StrVal(cfg.General.Root), progress)
 
-			// Stop progress goroutine before printing output
 			if progress != nil {
 				close(progress)
 				<-progressDone
 			}
 
-			// Handle context cancellation (Ctrl+C)
 			if err != nil {
 				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					if !jsonOut {
+					if jsonOut {
+						printJSONError("interrupted", result.Stats)
+					} else {
 						fmt.Printf("Scan interrupted after %d files, %d already in DB\n",
 							result.Stats.TotalFiles, result.Stats.TotalFiles)
-					} else {
-						printJSONError("interrupted", result.Stats)
 					}
 					return nil
 				}
@@ -214,9 +215,25 @@ func newScanCmd() *cobra.Command {
 				return nil
 			}
 
+			if quiet && len(result.Errors) == 0 {
+				return nil
+			}
+
 			out := newScanOutput(os.Stdout, format, verbose)
+
 			if dryRun {
-				out.line("Dry run — nothing was written to the database.")
+				insertCount := len(result.Documents)
+				skipCount := result.Stats.SkippedOnMtime
+				if insertCount > 0 && skipCount > 0 {
+					out.line(fmt.Sprintf("Dry run — would insert/update %d files, %d unchanged (no DB writes)",
+						insertCount, skipCount))
+				} else if insertCount > 0 {
+					out.line(fmt.Sprintf("Dry run — would insert/update %d files (no DB writes)", insertCount))
+				} else if skipCount > 0 {
+					out.line(fmt.Sprintf("Dry run — all %d files unchanged (no DB writes)", skipCount))
+				} else {
+					out.line("Dry run — nothing to do (no files found)")
+				}
 				out.blank()
 			}
 
@@ -247,6 +264,9 @@ func newScanCmd() *cobra.Command {
 			}
 			if result.Stats.SkippedByDir > 0 {
 				skippedPairs = append(skippedPairs, kv{"Skipped directories", fmt.Sprintf("%d", result.Stats.SkippedByDir)})
+			}
+			if result.Stats.SkippedByGlob > 0 {
+				skippedPairs = append(skippedPairs, kv{"Skipped by glob", fmt.Sprintf("%d", result.Stats.SkippedByGlob)})
 			}
 			if result.Stats.SymlinksSkipped > 0 {
 				skippedPairs = append(skippedPairs, kv{"Symlinks skipped", fmt.Sprintf("%d", result.Stats.SymlinksSkipped)})
@@ -292,8 +312,11 @@ func newScanCmd() *cobra.Command {
 	cmd.Flags().Bool("no-default-extensions", false, "Scan only extensions passed via --extension (ignore config defaults)")
 	cmd.Flags().String("min-size", "", "Minimum file size with suffix (e.g. 10k, 1m). Suffix: k=KB, m=MB")
 	cmd.Flags().String("max-size", "", "Maximum file size with suffix (e.g. 500m, 1g). Suffix: m=MB, g=GB")
+	cmd.Flags().StringSlice("exclude-glob", nil, "Exclude files matching glob patterns (repeatable, e.g. *.tmp *.bak)")
 	cmd.Flags().BoolP("verbose", "v", false, "List each processed file with details")
 	cmd.Flags().String("format", "", fmt.Sprintf("Output format: text or table (default: %q)", config.StrVal(config.DefaultConfig().General.OutputFormat)))
+	cmd.Flags().Bool("no-progress", false, "Suppress progress bar (still shows results)")
+	cmd.Flags().BoolP("quiet", "q", false, "Suppress progress and output (shows errors only)")
 
 	return cmd
 }
@@ -311,6 +334,7 @@ func printJSONResult(result *scan.Result) {
 			"needs_ocr":        result.Stats.NeedingOCR,
 			"skipped_by_size":  result.Stats.SkippedBySize,
 			"skipped_dirs":     result.Stats.SkippedByDir,
+			"skipped_by_glob":  result.Stats.SkippedByGlob,
 			"symlinks_skipped": result.Stats.SymlinksSkipped,
 			"skipped_on_mtime": result.Stats.SkippedOnMtime,
 		},
@@ -359,6 +383,7 @@ func printJSONError(status string, stats scan.Stats) {
 			"needs_ocr":        stats.NeedingOCR,
 			"skipped_by_size":  stats.SkippedBySize,
 			"skipped_dirs":     stats.SkippedByDir,
+			"skipped_by_glob":  stats.SkippedByGlob,
 			"symlinks_skipped": stats.SymlinksSkipped,
 			"skipped_on_mtime": stats.SkippedOnMtime,
 		},
@@ -449,7 +474,6 @@ func newScanOutput(dst io.Writer, format string, verbose bool) *scanOutput {
 	if mode == "" {
 		mode = "table"
 	}
-	// tabwriter used in both modes (text mode just uses \t as separator)
 	w := tabwriter.NewWriter(dst, 0, 0, 3, ' ', 0)
 	return &scanOutput{w: w, mode: mode, verbose: verbose}
 }
@@ -460,7 +484,6 @@ func (o *scanOutput) blank() {
 	_, _ = fmt.Fprintln(o.w)
 }
 
-// header prints a section title.
 func (o *scanOutput) header(title string) {
 	if o.mode == "table" {
 		_, _ = fmt.Fprintf(o.w, "─── %s ───\n", title)
@@ -469,7 +492,6 @@ func (o *scanOutput) header(title string) {
 	}
 }
 
-// detail prints a label: value pair.
 func (o *scanOutput) detail(label, value string) {
 	if o.mode == "table" {
 		_, _ = fmt.Fprintf(o.w, "%s\t%s\n", label, value)
@@ -478,12 +500,10 @@ func (o *scanOutput) detail(label, value string) {
 	}
 }
 
-// line prints a standalone message.
 func (o *scanOutput) line(msg string) {
 	_, _ = fmt.Fprintln(o.w, msg)
 }
 
-// summary prints scan stats.
 func (o *scanOutput) summary(s scan.Stats) {
 	if o.mode == "table" {
 		_, _ = fmt.Fprint(o.w, "Metric\tValue\n")
@@ -499,7 +519,6 @@ func (o *scanOutput) summary(s scan.Stats) {
 	}
 }
 
-// byType prints document type breakdown.
 func (o *scanOutput) byType(byType map[string]int) {
 	if len(byType) == 0 {
 		return
@@ -519,7 +538,6 @@ func (o *scanOutput) byType(byType map[string]int) {
 	}
 }
 
-// files prints each document in a table.
 func (o *scanOutput) files(docs []manifest.Document) {
 	if o.mode == "table" {
 		_, _ = fmt.Fprint(o.w, "Path\tType\tPages\tText\tSize\n")

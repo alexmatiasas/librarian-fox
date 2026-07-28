@@ -383,6 +383,13 @@
           "type": "array",
           "description": "Directory names to skip during scanning (symlinks always skipped)"
         },
+        "exclude_globs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "File glob patterns to exclude (e.g. *.tmp"
+        },
         "extensions": {
           "items": {
             "type": "string"

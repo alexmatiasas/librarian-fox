@@ -53,6 +53,7 @@ type Stats struct {
 	TotalSize       int64
 	SkippedBySize   int
 	SkippedByDir    int
+	SkippedByGlob   int
 	SymlinksSkipped int
 	SkippedOnMtime  int
 	WithTextLayer   int
@@ -116,6 +117,7 @@ func (s *Scanner) Scan(ctx context.Context, root string, progress chan<- *Event)
 		"min_size_kb", config.IntVal(s.config.Scan.MinFileSizeKB),
 		"max_size_mb", config.IntVal(s.config.Scan.MaxFileSizeMB),
 		"exclude_dirs", len(s.config.Scan.ExcludeDirs),
+		"exclude_globs", s.config.Scan.ExcludeGlobs,
 	)
 	s.checkTools()
 
@@ -191,7 +193,7 @@ func (s *Scanner) Scan(ctx context.Context, root string, progress chan<- *Event)
 func (s *Scanner) collectCandidates(ctx context.Context, root string, result *Result, progress chan<- *Event) ([]fileEntry, error) {
 	var candidates []fileEntry
 	found := 0
-	var skippedByExt, skippedByDepth int
+	var skippedByExt, skippedByDepth, skippedByGlob int
 
 	progressTicker := time.NewTicker(500 * time.Millisecond)
 	defer progressTicker.Stop()
@@ -250,6 +252,12 @@ func (s *Scanner) collectCandidates(ctx context.Context, root string, result *Re
 			return nil
 		}
 
+		if matchesGlob(path, s.config.Scan.ExcludeGlobs) {
+			skippedByGlob++
+			result.Stats.SkippedByGlob++
+			return nil
+		}
+
 		candidates = append(candidates, fileEntry{
 			path:     path,
 			info:     fi,
@@ -285,6 +293,7 @@ func (s *Scanner) collectCandidates(ctx context.Context, root string, result *Re
 		"by_depth", skippedByDepth,
 		"by_size", result.Stats.SkippedBySize,
 		"by_exclude_dir", result.Stats.SkippedByDir,
+		"by_glob", skippedByGlob,
 		"symlinks", result.Stats.SymlinksSkipped,
 	)
 
@@ -436,6 +445,20 @@ func getDepth(path, root string) int {
 func isValidExtension(ext string, allowed []string) bool {
 	for _, a := range allowed {
 		if ext == strings.ToLower(a) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesGlob checks if the file's base name matches any of the given glob patterns.
+func matchesGlob(path string, patterns []string) bool {
+	if len(patterns) == 0 {
+		return false
+	}
+	base := filepath.Base(path)
+	for _, p := range patterns {
+		if ok, _ := filepath.Match(p, base); ok {
 			return true
 		}
 	}
