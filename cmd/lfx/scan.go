@@ -69,7 +69,6 @@ func newScanCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("loading config: %w", err)
 			}
-
 			if root != "" {
 				cfg.General.Root = config.StrPtr(root)
 			}
@@ -78,8 +77,10 @@ func newScanCmd() *cobra.Command {
 				cfg.General.ManifestPath = config.StrPtr(dbPath)
 			}
 
-			if dryRun {
-				cfg.General.DryRun = config.BoolPtr(true)
+			// --dry-run flag overrides config. --dry-run=false desactiva explícitamente.
+			// Si no se pasa el flag, se usa cfg.General.DryRun (dry_run = true por defecto).
+			if cmd.Flags().Changed("dry-run") {
+				cfg.General.DryRun = config.BoolPtr(dryRun)
 			}
 
 			if len(excludeDirs) > 0 {
@@ -160,7 +161,7 @@ func newScanCmd() *cobra.Command {
 			showProgress := !jsonOut && !statsOnly && !noProgress && !quiet
 
 			scanner := scan.New(cfg, db, logger)
-			scanner.DryRun = dryRun
+			scanner.DryRun = config.BoolVal(cfg.General.DryRun)
 			scanner.StatsOnly = statsOnly
 
 			var progress chan *scan.Event
@@ -188,6 +189,10 @@ func newScanCmd() *cobra.Command {
 					}
 					fmt.Fprintln(os.Stderr)
 				}()
+			}
+
+			if configPath != "" {
+				logger.Info("config file", "path", configPath)
 			}
 
 			result, err := scanner.Scan(ctx, config.StrVal(cfg.General.Root), progress)
@@ -241,7 +246,7 @@ func newScanCmd() *cobra.Command {
 				out.detail("Stats", "Phase 1 only — no hashing or subprocess")
 			}
 
-			out.summary(result.Stats)
+			out.summary(result.Stats, config.StrVal(cfg.General.ManifestPath))
 			out.byType(result.Stats.ByType)
 
 			if !statsOnly && (result.Stats.WithTextLayer > 0 || result.Stats.NeedingOCR > 0) {
@@ -332,6 +337,8 @@ func printJSONResult(result *scan.Result) {
 			"by_type":          result.Stats.ByType,
 			"with_text_layer":  result.Stats.WithTextLayer,
 			"needs_ocr":        result.Stats.NeedingOCR,
+			"inserted":         result.Stats.WouldInsert,
+			"updated":          result.Stats.WouldUpdate,
 			"skipped_by_size":  result.Stats.SkippedBySize,
 			"skipped_dirs":     result.Stats.SkippedByDir,
 			"skipped_by_glob":  result.Stats.SkippedByGlob,
@@ -504,17 +511,19 @@ func (o *scanOutput) line(msg string) {
 	_, _ = fmt.Fprintln(o.w, msg)
 }
 
-func (o *scanOutput) summary(s scan.Stats) {
+func (o *scanOutput) summary(s scan.Stats, dbPath string) {
 	if o.mode == "table" {
 		_, _ = fmt.Fprint(o.w, "Metric\tValue\n")
 		_, _ = fmt.Fprint(o.w, "───\t─────\n")
 		o.detail("Documents found", fmt.Sprintf("%d", s.TotalFiles))
 		o.detail("Total size", fmt.Sprintf("%.1f MB", float64(s.TotalSize)/1048576))
+		o.detail("Database", dbPath)
 		o.detail("Time", fmt.Sprintf("%.1fs (collect: %dms, process: %dms)", s.Duration.Seconds(), s.CollectMs, s.ProcessMs))
 	} else {
 		_, _ = fmt.Fprint(o.w, "Scan complete:\n")
 		o.detail("Documents found", fmt.Sprintf("%d", s.TotalFiles))
 		o.detail("Total size", fmt.Sprintf("%.1f MB", float64(s.TotalSize)/1048576))
+		o.detail("Database", dbPath)
 		o.detail("Time", fmt.Sprintf("%.1fs (collect: %dms, process: %dms)", s.Duration.Seconds(), s.CollectMs, s.ProcessMs))
 	}
 }

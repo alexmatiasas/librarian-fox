@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/alexmatias/librarian_fox/internal/config"
@@ -58,6 +59,8 @@ type Stats struct {
 	SkippedOnMtime  int
 	WithTextLayer   int
 	NeedingOCR      int
+	WouldInsert     int64
+	WouldUpdate     int64
 	Duration        time.Duration
 	CollectMs       int64
 	ProcessMs       int64
@@ -109,7 +112,7 @@ func (s *Scanner) Scan(ctx context.Context, root string, progress chan<- *Event)
 		return nil, fmt.Errorf("root path %s is not a directory", root)
 	}
 
-	s.logger.Info("starting scan", "root", root)
+	s.logger.Info("starting scan", "root", root, "dry_run", s.DryRun)
 	s.logger.Info("scan config",
 		"root", root,
 		"extensions", s.config.Scan.Extensions,
@@ -118,6 +121,7 @@ func (s *Scanner) Scan(ctx context.Context, root string, progress chan<- *Event)
 		"max_size_mb", config.IntVal(s.config.Scan.MaxFileSizeMB),
 		"exclude_dirs", len(s.config.Scan.ExcludeDirs),
 		"exclude_globs", s.config.Scan.ExcludeGlobs,
+		"dry_run", s.DryRun,
 	)
 	s.checkTools()
 
@@ -177,6 +181,8 @@ func (s *Scanner) Scan(ctx context.Context, root string, progress chan<- *Event)
 		"total", result.Stats.TotalFiles,
 		"size", result.Stats.TotalSize,
 		"by_type", result.Stats.ByType,
+		"inserted", result.Stats.WouldInsert,
+		"updated", result.Stats.WouldUpdate,
 		"skipped_on_mtime", result.Stats.SkippedOnMtime,
 		"errors", len(result.Errors),
 		"collect_ms", collectTime.Milliseconds(),
@@ -321,7 +327,7 @@ func (s *Scanner) processCandidates(ctx context.Context, candidates []fileEntry,
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			doc, skipped, err := s.processFile(ctx, entry)
+			doc, skipped, err := s.processFile(ctx, entry, result)
 			if err != nil {
 				mu.Lock()
 				result.Errors = append(result.Errors, ScanError{Path: entry.path, Error: err})
@@ -362,7 +368,7 @@ func (s *Scanner) processCandidates(ctx context.Context, candidates []fileEntry,
 
 // processFile handles a single file entry: skip check, hash, subprocess, DB insert.
 // Returns the document, whether it was skipped (unchanged since last scan), and any error.
-func (s *Scanner) processFile(ctx context.Context, entry fileEntry) (*manifest.Document, bool, error) {
+func (s *Scanner) processFile(ctx context.Context, entry fileEntry, result *Result) (*manifest.Document, bool, error) {
 	// Check if file can be skipped (unchanged mtime + size)
 	mtime := entry.info.ModTime().UTC().Format(time.RFC3339)
 	size := entry.info.Size()
@@ -399,6 +405,16 @@ func (s *Scanner) processFile(ctx context.Context, entry fileEntry) (*manifest.D
 		NeedsOCR:     !hasText,
 		Language:     &lang,
 		ModifiedAt:   &mtime,
+	}
+
+	// Track insert vs update (thread-safe via atomic)
+	if existing != nil {
+		atomic.AddInt64(&result.Stats.WouldUpdate, 1)
+	} else {
+		atomic.AddInt64(&result.Stats.WouldInsert, 1)
+		if s.logger.Enabled(ctx, slog.LevelDebug) {
+			s.logger.Debug("new file", "path", entry.path)
+		}
 	}
 
 	if !s.DryRun {
