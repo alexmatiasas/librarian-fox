@@ -380,6 +380,13 @@
           },
           "type": "array",
           "description": "File extensions to process (without the dot)"
+        },
+        "max_concurrent_files": {
+          "type": "integer",
+          "maximum": 16,
+          "minimum": 1,
+          "description": "Number of files to process in parallel during scan",
+          "default": 4
         }
       },
       "additionalProperties": false,

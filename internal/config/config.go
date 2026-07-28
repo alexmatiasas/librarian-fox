@@ -75,11 +75,12 @@ type GeneralConfig struct {
 
 // ScanConfig holds file discovery and filtering settings.
 type ScanConfig struct {
-	MaxDepth      *int     `json:"max_depth,omitempty" toml:"max_depth" jsonschema:"default=5,minimum=1,maximum=20,description=Maximum directory recursion depth from root"`
-	MinFileSizeKB *int     `json:"min_file_size_kb,omitempty" toml:"min_file_size_kb" jsonschema:"default=10,minimum=0,description=Ignore files smaller than this (in KB)"`
-	MaxFileSizeMB *int     `json:"max_file_size_mb,omitempty" toml:"max_file_size_mb" jsonschema:"default=500,minimum=1,description=Ignore files larger than this (in MB)"`
-	ExcludeDirs   []string `json:"exclude_dirs,omitempty" toml:"exclude_dirs" jsonschema:"description=Directory names to skip during scanning (symlinks always skipped)"`
-	Extensions    []string `json:"extensions,omitempty" toml:"extensions" jsonschema:"description=File extensions to process (without the dot)"`
+	MaxDepth           *int     `json:"max_depth,omitempty" toml:"max_depth" jsonschema:"default=5,minimum=1,maximum=20,description=Maximum directory recursion depth from root"`
+	MinFileSizeKB      *int     `json:"min_file_size_kb,omitempty" toml:"min_file_size_kb" jsonschema:"default=10,minimum=0,description=Ignore files smaller than this (in KB)"`
+	MaxFileSizeMB      *int     `json:"max_file_size_mb,omitempty" toml:"max_file_size_mb" jsonschema:"default=500,minimum=1,description=Ignore files larger than this (in MB)"`
+	ExcludeDirs        []string `json:"exclude_dirs,omitempty" toml:"exclude_dirs" jsonschema:"description=Directory names to skip during scanning (symlinks always skipped)"`
+	Extensions         []string `json:"extensions,omitempty" toml:"extensions" jsonschema:"description=File extensions to process (without the dot)"`
+	MaxConcurrentFiles *int     `json:"max_concurrent_files,omitempty" toml:"max_concurrent_files" jsonschema:"default=4,minimum=1,maximum=16,description=Number of files to process in parallel during scan"`
 }
 
 // LLMConfig holds LLM provider settings for document classification.
@@ -439,6 +440,9 @@ func mergeScan(dst, src *ScanConfig) {
 	}
 	if len(src.Extensions) > 0 {
 		dst.Extensions = src.Extensions
+	}
+	if src.MaxConcurrentFiles != nil {
+		dst.MaxConcurrentFiles = src.MaxConcurrentFiles
 	}
 }
 

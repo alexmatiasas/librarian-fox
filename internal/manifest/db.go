@@ -128,8 +128,9 @@ func (db *DB) InsertDocument(ctx context.Context, doc *Document) error {
 		ctx, `
 		INSERT INTO documents (
 			id, source_path, file_type, file_size, page_count,
-			has_text_layer, needs_ocr, quality_flags, language
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			has_text_layer, needs_ocr, quality_flags, language,
+			modified_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			source_path = excluded.source_path,
 			file_type = excluded.file_type,
@@ -138,9 +139,11 @@ func (db *DB) InsertDocument(ctx context.Context, doc *Document) error {
 			has_text_layer = excluded.has_text_layer,
 			needs_ocr = excluded.needs_ocr,
 			quality_flags = excluded.quality_flags,
-			language = excluded.language`,
+			language = excluded.language,
+			modified_at = excluded.modified_at`,
 		doc.ID, doc.SourcePath, doc.FileType, doc.FileSize, doc.PageCount,
 		doc.HasTextLayer, doc.NeedsOCR, doc.QualityFlags, doc.Language,
+		doc.ModifiedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("inserting document: %w", err)
@@ -176,16 +179,16 @@ func scanDocNullable(
 func (db *DB) GetDocument(ctx context.Context, id string) (*Document, error) {
 	doc := &Document{}
 	var pageCount sql.NullInt64
-	var qualityFlags, language sql.NullString
+	var qualityFlags, language, modifiedAt sql.NullString
 
 	err := db.QueryRowContext(ctx, `
 		SELECT id, source_path, file_type, file_size, page_count,
 		       has_text_layer, needs_ocr, quality_flags, language,
-		       created_at, updated_at
+		       modified_at, created_at, updated_at
 		FROM documents WHERE id = ?`, id).Scan(
 		&doc.ID, &doc.SourcePath, &doc.FileType, &doc.FileSize, &pageCount,
 		&doc.HasTextLayer, &doc.NeedsOCR, &qualityFlags, &language,
-		&doc.CreatedAt, &doc.UpdatedAt,
+		&modifiedAt, &doc.CreatedAt, &doc.UpdatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -195,6 +198,9 @@ func (db *DB) GetDocument(ctx context.Context, id string) (*Document, error) {
 	}
 
 	doc.PageCount, doc.QualityFlags, doc.Language = scanDocNullable(pageCount, qualityFlags, language)
+	if modifiedAt.Valid {
+		doc.ModifiedAt = &modifiedAt.String
+	}
 
 	return doc, nil
 }
@@ -205,7 +211,7 @@ func (db *DB) ListDocuments(ctx context.Context, limit, offset int) ([]*Document
 	query := `
 		SELECT id, source_path, file_type, file_size, page_count,
 		       has_text_layer, needs_ocr, quality_flags, language,
-		       created_at, updated_at
+		       modified_at, created_at, updated_at
 		FROM documents ORDER BY source_path`
 
 	if limit > 0 {
@@ -225,22 +231,57 @@ func (db *DB) ListDocuments(ctx context.Context, limit, offset int) ([]*Document
 	for rows.Next() {
 		doc := &Document{}
 		var pageCount sql.NullInt64
-		var qualityFlags, language sql.NullString
+		var qualityFlags, language, modifiedAt sql.NullString
 
 		if err := rows.Scan(
 			&doc.ID, &doc.SourcePath, &doc.FileType, &doc.FileSize, &pageCount,
 			&doc.HasTextLayer, &doc.NeedsOCR, &qualityFlags, &language,
-			&doc.CreatedAt, &doc.UpdatedAt,
+			&modifiedAt, &doc.CreatedAt, &doc.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scanning document: %w", err)
 		}
 
 		doc.PageCount, doc.QualityFlags, doc.Language = scanDocNullable(pageCount, qualityFlags, language)
+		if modifiedAt.Valid {
+			doc.ModifiedAt = &modifiedAt.String
+		}
 
 		docs = append(docs, doc)
 	}
 
 	return docs, rows.Err()
+}
+
+// FindByPath looks up a document by its source path.
+// Returns nil (no error) if not found.
+func (db *DB) FindByPath(ctx context.Context, sourcePath string) (*Document, error) {
+	doc := &Document{}
+	var pageCount sql.NullInt64
+	var qualityFlags, language, modifiedAt sql.NullString
+
+	err := db.QueryRowContext(ctx, `
+		SELECT id, source_path, file_type, file_size, page_count,
+		       has_text_layer, needs_ocr, quality_flags, language,
+		       modified_at, created_at, updated_at
+		FROM documents WHERE source_path = ?
+		ORDER BY updated_at DESC LIMIT 1`, sourcePath).Scan(
+		&doc.ID, &doc.SourcePath, &doc.FileType, &doc.FileSize, &pageCount,
+		&doc.HasTextLayer, &doc.NeedsOCR, &qualityFlags, &language,
+		&modifiedAt, &doc.CreatedAt, &doc.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("finding document by path: %w", err)
+	}
+
+	doc.PageCount, doc.QualityFlags, doc.Language = scanDocNullable(pageCount, qualityFlags, language)
+	if modifiedAt.Valid {
+		doc.ModifiedAt = &modifiedAt.String
+	}
+
+	return doc, nil
 }
 
 // InsertClassification inserts a new classification attempt.
