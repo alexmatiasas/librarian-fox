@@ -9,6 +9,7 @@ library_dir = "~/Library"
 manifest_path = "~/.local/share/lfx/manifest.db"
 log_level = "info"
 dry_run = true
+output_format = "table"
 
 [scan]
 max_depth = 5

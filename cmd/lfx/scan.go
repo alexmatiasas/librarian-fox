@@ -5,10 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
+	"sort"
+	"strconv"
+	"strings"
 	"syscall"
+	"text/tabwriter"
 
 	"github.com/alexmatias/librarian_fox/internal/config"
 	"github.com/alexmatias/librarian_fox/internal/manifest"
@@ -33,6 +38,21 @@ func newScanCmd() *cobra.Command {
 			excludeDirs, _ := cmd.Flags().GetStringSlice("exclude-dir")
 			noDefaultExcludes, _ := cmd.Flags().GetBool("no-default-excludes")
 			maxDepth, _ := cmd.Flags().GetInt("max-depth")
+			extensions, _ := cmd.Flags().GetStringSlice("extension")
+			noDefaultExtensions, _ := cmd.Flags().GetBool("no-default-extensions")
+			verbose, _ := cmd.Flags().GetBool("verbose")
+			format, _ := cmd.Flags().GetString("format")
+			var minSize, maxSize byteSize
+			if v, err := cmd.Flags().GetString("min-size"); err == nil && v != "" {
+				if err := minSize.Set(v); err != nil {
+					return fmt.Errorf("--min-size: %w", err)
+				}
+			}
+			if v, err := cmd.Flags().GetString("max-size"); err == nil && v != "" {
+				if err := maxSize.Set(v); err != nil {
+					return fmt.Errorf("--max-size: %w", err)
+				}
+			}
 
 			// Positional arg overrides --root flag
 			if len(args) > 0 {
@@ -74,6 +94,30 @@ func newScanCmd() *cobra.Command {
 				cfg.Scan.MaxDepth = config.IntPtr(maxDepth)
 			}
 
+			// --extension is additive, same pattern as exclude-dir.
+			if len(extensions) > 0 {
+				if noDefaultExtensions {
+					cfg.Scan.Extensions = extensions
+				} else {
+					cfg.Scan.Extensions = append(cfg.Scan.Extensions, extensions...)
+				}
+			}
+
+			if minSize > 0 {
+				minKB := int(minSize / KB)
+				if minKB == 0 {
+					minKB = 1 // floor to 1KB minimum
+				}
+				cfg.Scan.MinFileSizeKB = config.IntPtr(minKB)
+			}
+			if maxSize > 0 {
+				maxMB := int(maxSize / MB)
+				if maxMB == 0 {
+					maxMB = 1
+				}
+				cfg.Scan.MaxFileSizeMB = config.IntPtr(maxMB)
+			}
+
 			if logLevel == "" {
 				logLevel = config.StrVal(cfg.General.LogLevel)
 			}
@@ -106,6 +150,10 @@ func newScanCmd() *cobra.Command {
 				}
 			}
 
+			if format == "" {
+				format = config.StrVal(cfg.General.OutputFormat)
+			}
+
 			scanner := scan.New(cfg, db, logger)
 			scanner.DryRun = dryRun
 			scanner.StatsOnly = statsOnly
@@ -120,7 +168,12 @@ func newScanCmd() *cobra.Command {
 					defer close(progressDone)
 					for e := range progress {
 						if e.Phase == "collect" {
-							fmt.Fprintf(os.Stderr, "\rCollecting... %d files found...", e.Current)
+							if e.Total > 0 {
+								// Final collect event — terminate line for subsequent slog output
+								fmt.Fprintf(os.Stderr, "\rCollecting... %d files found...\n", e.Current)
+							} else {
+								fmt.Fprintf(os.Stderr, "\rCollecting... %d files found...", e.Current)
+							}
 							continue
 						}
 						bar := drawProgressBar(e.Current, e.Total)
@@ -161,51 +214,65 @@ func newScanCmd() *cobra.Command {
 				return nil
 			}
 
+			out := newScanOutput(os.Stdout, format, verbose)
 			if dryRun {
-				fmt.Print("Dry run — nothing was written to the database.\n\n")
+				out.line("Dry run — nothing was written to the database.")
+				out.blank()
 			}
 
 			if statsOnly {
-				fmt.Printf("Stats (Phase 1 only):\n")
-			} else {
-				fmt.Printf("Scan complete:\n")
+				out.detail("Stats", "Phase 1 only — no hashing or subprocess")
 			}
-			fmt.Printf("  Documents found: %d\n", result.Stats.TotalFiles)
-			fmt.Printf("  Total size: %.1f MB\n", float64(result.Stats.TotalSize)/1048576)
-			fmt.Printf("  Time: %.1fs (collect: %dms, process: %dms)\n",
-				result.Stats.Duration.Seconds(),
-				result.Stats.CollectMs,
-				result.Stats.ProcessMs)
-			fmt.Printf("  By type:\n")
-			for t, n := range result.Stats.ByType {
-				fmt.Printf("    %s: %d\n", t, n)
-			}
-			if !statsOnly {
+
+			out.summary(result.Stats)
+			out.byType(result.Stats.ByType)
+
+			if !statsOnly && (result.Stats.WithTextLayer > 0 || result.Stats.NeedingOCR > 0) {
+				out.blank()
+				out.header("Text layer")
 				if result.Stats.WithTextLayer > 0 {
-					fmt.Printf("  With text layer: %d\n", result.Stats.WithTextLayer)
+					out.detail("With text", fmt.Sprintf("%d", result.Stats.WithTextLayer))
 				}
 				if result.Stats.NeedingOCR > 0 {
-					fmt.Printf("  Needs OCR: %d\n", result.Stats.NeedingOCR)
+					out.detail("Needs OCR", fmt.Sprintf("%d", result.Stats.NeedingOCR))
 				}
 			}
+
+			var skippedPairs []kv
 			if result.Stats.SkippedOnMtime > 0 {
-				fmt.Printf("  Unchanged (skipped): %d\n", result.Stats.SkippedOnMtime)
+				skippedPairs = append(skippedPairs, kv{"Skipped (unchanged)", fmt.Sprintf("%d", result.Stats.SkippedOnMtime)})
 			}
 			if result.Stats.SkippedBySize > 0 {
-				fmt.Printf("  Skipped by size: %d\n", result.Stats.SkippedBySize)
+				skippedPairs = append(skippedPairs, kv{"Skipped by size", fmt.Sprintf("%d", result.Stats.SkippedBySize)})
 			}
 			if result.Stats.SkippedByDir > 0 {
-				fmt.Printf("  Skipped directories: %d\n", result.Stats.SkippedByDir)
+				skippedPairs = append(skippedPairs, kv{"Skipped directories", fmt.Sprintf("%d", result.Stats.SkippedByDir)})
 			}
 			if result.Stats.SymlinksSkipped > 0 {
-				fmt.Printf("  Symlinks skipped: %d\n", result.Stats.SymlinksSkipped)
+				skippedPairs = append(skippedPairs, kv{"Symlinks skipped", fmt.Sprintf("%d", result.Stats.SymlinksSkipped)})
 			}
-			if len(result.Errors) > 0 {
-				fmt.Printf("  Errors: %d\n", len(result.Errors))
-				for _, e := range result.Errors {
-					fmt.Printf("    %s: %v\n", e.Path, e.Error)
+			if len(skippedPairs) > 0 {
+				out.blank()
+				out.header("Skipped")
+				for _, p := range skippedPairs {
+					out.detail(p.label, p.value)
 				}
 			}
+
+			if len(result.Errors) > 0 {
+				out.blank()
+				out.header("Errors")
+				for _, e := range result.Errors {
+					out.detail(e.Path, e.Error.Error())
+				}
+			}
+
+			if verbose && len(result.Documents) > 0 {
+				out.blank()
+				out.files(result.Documents)
+			}
+
+			out.flush()
 
 			return nil
 		},
@@ -221,6 +288,12 @@ func newScanCmd() *cobra.Command {
 	cmd.Flags().StringSlice("exclude-dir", nil, "Additional directory names to exclude (repeatable, additive)")
 	cmd.Flags().Bool("no-default-excludes", false, "Start with empty exclude list instead of config defaults")
 	cmd.Flags().Int("max-depth", 0, "Maximum directory traversal depth (0 = use config default)")
+	cmd.Flags().StringSlice("extension", nil, "File extensions to scan (repeatable, additive, without dot)")
+	cmd.Flags().Bool("no-default-extensions", false, "Scan only extensions passed via --extension (ignore config defaults)")
+	cmd.Flags().String("min-size", "", "Minimum file size with suffix (e.g. 10k, 1m). Suffix: k=KB, m=MB")
+	cmd.Flags().String("max-size", "", "Maximum file size with suffix (e.g. 500m, 1g). Suffix: m=MB, g=GB")
+	cmd.Flags().BoolP("verbose", "v", false, "List each processed file with details")
+	cmd.Flags().String("format", "", fmt.Sprintf("Output format: text or table (default: %q)", config.StrVal(config.DefaultConfig().General.OutputFormat)))
 
 	return cmd
 }
@@ -293,4 +366,211 @@ func printJSONError(status string, stats scan.Stats) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(out)
+}
+
+// byteSize parses size strings with optional suffix: k/K (KB), m/M (MB), g/G (GB), t/T (TB).
+// Default suffix (no letter) = bytes.
+type byteSize int64
+
+const (
+	_  = iota
+	KB = 1 << (10 * iota) // 1024
+	MB                    // 1048576
+	GB                    // 1073741824
+	TB                    // 1099511627776
+)
+
+func (b *byteSize) String() string {
+	switch {
+	case *b >= TB:
+		return fmt.Sprintf("%.0ft", float64(*b)/TB)
+	case *b >= GB:
+		return fmt.Sprintf("%.0fg", float64(*b)/GB)
+	case *b >= MB:
+		return fmt.Sprintf("%.0fm", float64(*b)/MB)
+	case *b >= KB:
+		return fmt.Sprintf("%.0fk", float64(*b)/KB)
+	default:
+		return fmt.Sprintf("%db", *b)
+	}
+}
+
+func (b *byteSize) Set(s string) error {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return fmt.Errorf("empty size")
+	}
+
+	var multiplier int64 = 1
+	numStr := s
+	switch last := s[len(s)-1]; last {
+	case 't', 'T':
+		multiplier = TB
+		numStr = s[:len(s)-1]
+	case 'g', 'G':
+		multiplier = GB
+		numStr = s[:len(s)-1]
+	case 'm', 'M':
+		multiplier = MB
+		numStr = s[:len(s)-1]
+	case 'k', 'K':
+		multiplier = KB
+		numStr = s[:len(s)-1]
+	}
+
+	n, err := strconv.ParseInt(numStr, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid size %q: %w", s, err)
+	}
+	if n < 0 {
+		return fmt.Errorf("negative size %q", s)
+	}
+
+	*b = byteSize(n * multiplier)
+	return nil
+}
+
+func (b *byteSize) Type() string { return "size" }
+
+// ---------------------------------------------------------------------------
+// scanOutput — formatea resultados de scan en text o table mode
+// ---------------------------------------------------------------------------
+
+type kv struct{ label, value string }
+
+type scanOutput struct {
+	w       *tabwriter.Writer
+	mode    string // "text" or "table"
+	verbose bool
+}
+
+func newScanOutput(dst io.Writer, format string, verbose bool) *scanOutput {
+	mode := format
+	if mode == "" {
+		mode = "table"
+	}
+	// tabwriter used in both modes (text mode just uses \t as separator)
+	w := tabwriter.NewWriter(dst, 0, 0, 3, ' ', 0)
+	return &scanOutput{w: w, mode: mode, verbose: verbose}
+}
+
+func (o *scanOutput) flush() { _ = o.w.Flush() }
+
+func (o *scanOutput) blank() {
+	_, _ = fmt.Fprintln(o.w)
+}
+
+// header prints a section title.
+func (o *scanOutput) header(title string) {
+	if o.mode == "table" {
+		_, _ = fmt.Fprintf(o.w, "─── %s ───\n", title)
+	} else {
+		_, _ = fmt.Fprintf(o.w, "%s:\n", title)
+	}
+}
+
+// detail prints a label: value pair.
+func (o *scanOutput) detail(label, value string) {
+	if o.mode == "table" {
+		_, _ = fmt.Fprintf(o.w, "%s\t%s\n", label, value)
+	} else {
+		_, _ = fmt.Fprintf(o.w, "  %s: %s\n", label, value)
+	}
+}
+
+// line prints a standalone message.
+func (o *scanOutput) line(msg string) {
+	_, _ = fmt.Fprintln(o.w, msg)
+}
+
+// summary prints scan stats.
+func (o *scanOutput) summary(s scan.Stats) {
+	if o.mode == "table" {
+		_, _ = fmt.Fprint(o.w, "Metric\tValue\n")
+		_, _ = fmt.Fprint(o.w, "───\t─────\n")
+		o.detail("Documents found", fmt.Sprintf("%d", s.TotalFiles))
+		o.detail("Total size", fmt.Sprintf("%.1f MB", float64(s.TotalSize)/1048576))
+		o.detail("Time", fmt.Sprintf("%.1fs (collect: %dms, process: %dms)", s.Duration.Seconds(), s.CollectMs, s.ProcessMs))
+	} else {
+		_, _ = fmt.Fprint(o.w, "Scan complete:\n")
+		o.detail("Documents found", fmt.Sprintf("%d", s.TotalFiles))
+		o.detail("Total size", fmt.Sprintf("%.1f MB", float64(s.TotalSize)/1048576))
+		o.detail("Time", fmt.Sprintf("%.1fs (collect: %dms, process: %dms)", s.Duration.Seconds(), s.CollectMs, s.ProcessMs))
+	}
+}
+
+// byType prints document type breakdown.
+func (o *scanOutput) byType(byType map[string]int) {
+	if len(byType) == 0 {
+		return
+	}
+	o.blank()
+	if o.mode == "table" {
+		_, _ = fmt.Fprint(o.w, "Type\tCount\n")
+		_, _ = fmt.Fprint(o.w, "───\t─────\n")
+		for _, t := range sortedKeys(byType) {
+			_, _ = fmt.Fprintf(o.w, "%s\t%d\n", t, byType[t])
+		}
+	} else {
+		_, _ = fmt.Fprint(o.w, "  By type:\n")
+		for _, t := range sortedKeys(byType) {
+			_, _ = fmt.Fprintf(o.w, "    %s: %d\n", t, byType[t])
+		}
+	}
+}
+
+// files prints each document in a table.
+func (o *scanOutput) files(docs []manifest.Document) {
+	if o.mode == "table" {
+		_, _ = fmt.Fprint(o.w, "Path\tType\tPages\tText\tSize\n")
+		_, _ = fmt.Fprint(o.w, "───\t───\t───\t───\t───\n")
+		for _, d := range docs {
+			text := "no"
+			if d.HasTextLayer {
+				text = "yes"
+			}
+			pages := "-"
+			if d.PageCount != nil {
+				pages = fmt.Sprintf("%d", *d.PageCount)
+			}
+			_, _ = fmt.Fprintf(o.w, "%s\t%s\t%s\t%s\t%s\n",
+				d.SourcePath, d.FileType, pages, text, fmtSize(d.FileSize))
+		}
+	} else {
+		for _, d := range docs {
+			text := "no"
+			if d.HasTextLayer {
+				text = "yes"
+			}
+			pages := "-"
+			if d.PageCount != nil {
+				pages = fmt.Sprintf("%d", *d.PageCount)
+			}
+			_, _ = fmt.Fprintf(o.w, "  %s\n", d.SourcePath)
+			_, _ = fmt.Fprintf(o.w, "    Type: %s | Pages: %s | Text: %s | Size: %s\n",
+				d.FileType, pages, text, fmtSize(d.FileSize))
+		}
+	}
+}
+
+func sortedKeys(m map[string]int) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func fmtSize(n int64) string {
+	switch {
+	case n >= GB:
+		return fmt.Sprintf("%.1f GB", float64(n)/GB)
+	case n >= MB:
+		return fmt.Sprintf("%.1f MB", float64(n)/MB)
+	case n >= KB:
+		return fmt.Sprintf("%.0f KB", float64(n)/KB)
+	default:
+		return fmt.Sprintf("%d B", n)
+	}
 }

@@ -119,6 +119,15 @@
           "type": "boolean",
           "description": "If true",
           "default": true
+        },
+        "output_format": {
+          "type": "string",
+          "enum": [
+            "text",
+            "table"
+          ],
+          "description": "CLI output format: text (pipe-friendly) or table (aligned columns)",
+          "default": "table"
         }
       },
       "additionalProperties": false,

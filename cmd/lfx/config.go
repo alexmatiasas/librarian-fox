@@ -52,6 +52,7 @@ func newConfigShowCmd() *cobra.Command {
 			fmt.Printf("  manifest_path = %q\n", config.StrVal(cfg.General.ManifestPath))
 			fmt.Printf("  log_level = %q\n", config.StrVal(cfg.General.LogLevel))
 			fmt.Printf("  dry_run = %v\n", config.BoolVal(cfg.General.DryRun))
+			fmt.Printf("  output_format = %q\n", config.StrVal(cfg.General.OutputFormat))
 
 			fmt.Printf("\n[scan]\n")
 			fmt.Printf("  max_depth = %d\n", config.IntVal(cfg.Scan.MaxDepth))

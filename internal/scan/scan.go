@@ -109,6 +109,14 @@ func (s *Scanner) Scan(ctx context.Context, root string, progress chan<- *Event)
 	}
 
 	s.logger.Info("starting scan", "root", root)
+	s.logger.Info("scan config",
+		"root", root,
+		"extensions", s.config.Scan.Extensions,
+		"max_depth", config.IntVal(s.config.Scan.MaxDepth),
+		"min_size_kb", config.IntVal(s.config.Scan.MinFileSizeKB),
+		"max_size_mb", config.IntVal(s.config.Scan.MaxFileSizeMB),
+		"exclude_dirs", len(s.config.Scan.ExcludeDirs),
+	)
 	s.checkTools()
 
 	// Phase 1: collect candidate file entries (filtering only, no processing)
@@ -183,6 +191,7 @@ func (s *Scanner) Scan(ctx context.Context, root string, progress chan<- *Event)
 func (s *Scanner) collectCandidates(ctx context.Context, root string, result *Result, progress chan<- *Event) ([]fileEntry, error) {
 	var candidates []fileEntry
 	found := 0
+	var skippedByExt, skippedByDepth int
 
 	progressTicker := time.NewTicker(500 * time.Millisecond)
 	defer progressTicker.Stop()
@@ -221,12 +230,14 @@ func (s *Scanner) collectCandidates(ctx context.Context, root string, result *Re
 
 		depth := getDepth(path, root)
 		if depth > config.IntVal(s.config.Scan.MaxDepth) {
+			skippedByDepth++
 			return nil
 		}
 
 		ext := strings.TrimPrefix(filepath.Ext(path), ".")
 		ext = strings.ToLower(ext)
 		if !isValidExtension(ext, s.config.Scan.Extensions) {
+			skippedByExt++
 			return nil
 		}
 
@@ -262,10 +273,20 @@ func (s *Scanner) collectCandidates(ctx context.Context, root string, result *Re
 		return nil
 	})
 
-	// Final collect event with total known
+	// Final collect event with total known (send BEFORE logging to
+	// terminate the \r-based collect progress line cleanly).
 	if progress != nil && found > 0 {
-		progress <- &Event{Phase: "collect", Current: found}
+		progress <- &Event{Phase: "collect", Current: found, Total: found}
 	}
+
+	s.logger.Debug("collect filter results",
+		"candidates", len(candidates),
+		"by_extension", skippedByExt,
+		"by_depth", skippedByDepth,
+		"by_size", result.Stats.SkippedBySize,
+		"by_exclude_dir", result.Stats.SkippedByDir,
+		"symlinks", result.Stats.SymlinksSkipped,
+	)
 
 	return candidates, err
 }
