@@ -2,11 +2,14 @@ package scan
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alexmatias/librarian_fox/internal/config"
 	"github.com/alexmatias/librarian_fox/internal/manifest"
@@ -368,22 +371,34 @@ func TestScan_ProgressEvents_MultipleFiles(t *testing.T) {
 		t.Fatalf("Scan() error = %v", err)
 	}
 
-	// Deberíamos tener 3 eventos de progreso
+	// Deberíamos tener 4 eventos (1 collect + 3 scan)
 	close(progress)
 	events := make([]*Event, 0)
 	for e := range progress {
 		events = append(events, e)
 	}
-	if len(events) != 3 {
-		t.Errorf("progress events = %d, want 3", len(events))
+	if len(events) != 4 {
+		t.Errorf("progress events = %d, want 4 (1 collect + 3 scan)", len(events))
 	}
+	// First event should be collect
+	if events[0].Phase != "collect" {
+		t.Errorf("event[0].Phase = %q, want collect", events[0].Phase)
+	}
+	// With concurrent processing, scan events may arrive out of order — sort by Current
+	scanEvents := make([]*Event, 0, 3)
+	for _, e := range events[1:] {
+		if e.Phase == "scan" {
+			scanEvents = append(scanEvents, e)
+		}
+	}
+	sort.Slice(scanEvents, func(i, j int) bool { return scanEvents[i].Current < scanEvents[j].Current })
 	// Verificar que Current va incrementando
-	for i, e := range events {
+	for i, e := range scanEvents {
 		if e.Current != i+1 {
-			t.Errorf("event[%d].Current = %d, want %d", i, e.Current, i+1)
+			t.Errorf("scan event[%d].Current = %d, want %d", i, e.Current, i+1)
 		}
 		if e.Phase != "scan" {
-			t.Errorf("event[%d].Phase = %q, want scan", i, e.Phase)
+			t.Errorf("scan event[%d].Phase = %q, want scan", i, e.Phase)
 		}
 	}
 }
@@ -503,5 +518,174 @@ func TestScan_EmptyDirectory(t *testing.T) {
 	}
 	if len(result.Documents) != 0 {
 		t.Errorf("Documents = %d, want 0", len(result.Documents))
+	}
+}
+
+// -----------------------------------------------------------
+// 8. Skip-on-mtime — archivos sin cambios se saltan
+// -----------------------------------------------------------
+
+func TestScan_SkipOnMtime(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	for _, name := range []string{"a.pdf", "b.pdf", "c.pdf"} {
+		createUniquePDF(t, tmpDir, name)
+	}
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	scanner := New(cfg, db, logger)
+
+	// First scan: all files processed
+	r1, err := scanner.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("first Scan() error = %v", err)
+	}
+	if r1.Stats.TotalFiles != 3 {
+		t.Fatalf("first scan: TotalFiles = %d, want 3", r1.Stats.TotalFiles)
+	}
+	if r1.Stats.SkippedOnMtime != 0 {
+		t.Errorf("first scan: SkippedOnMtime = %d, want 0", r1.Stats.SkippedOnMtime)
+	}
+
+	// Second scan: all files should be skipped (unchanged mtime + size)
+	r2, err := scanner.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("second Scan() error = %v", err)
+	}
+	if r2.Stats.TotalFiles != 3 {
+		t.Errorf("second scan: TotalFiles = %d, want 3", r2.Stats.TotalFiles)
+	}
+	if r2.Stats.SkippedOnMtime != 3 {
+		t.Errorf("second scan: SkippedOnMtime = %d, want 3 (all skipped)", r2.Stats.SkippedOnMtime)
+	}
+}
+
+// -----------------------------------------------------------
+// 9. Skip-on-mtime — archivo modificado se reprocesa
+// -----------------------------------------------------------
+
+func TestScan_SkipOnMtime_ChangedFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	for _, name := range []string{"a.pdf", "b.pdf"} {
+		createUniquePDF(t, tmpDir, name)
+	}
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	scanner := New(cfg, db, logger)
+
+	// First scan
+	r1, err := scanner.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("first Scan() error = %v", err)
+	}
+	if r1.Stats.TotalFiles != 2 {
+		t.Fatalf("first scan: TotalFiles = %d, want 2", r1.Stats.TotalFiles)
+	}
+
+	// Wait a tick to ensure different mtime
+	time.Sleep(10 * time.Millisecond)
+
+	// Modify file "a.pdf" with new content
+	newContent := []byte("modified-content-" + strings.Repeat("x", 1024*11))
+	if err := os.WriteFile(filepath.Join(tmpDir, "a.pdf"), newContent, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Second scan: only a.pdf should be reprocessed, b.pdf skipped
+	r2, err := scanner.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("second Scan() error = %v", err)
+	}
+	if r2.Stats.TotalFiles != 2 {
+		t.Errorf("second scan: TotalFiles = %d, want 2", r2.Stats.TotalFiles)
+	}
+	// b.pdf unchanged → skipped; a.pdf changed → not skipped
+	if r2.Stats.SkippedOnMtime != 1 {
+		t.Errorf("second scan: SkippedOnMtime = %d, want 1 (only b.pdf skipped)", r2.Stats.SkippedOnMtime)
+	}
+}
+
+// -----------------------------------------------------------
+// 10. Worker pool — procesamiento concurrente sin pérdidas
+// -----------------------------------------------------------
+
+func TestScan_WorkerPool_ProcessesAll(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	numFiles := 20
+	for i := range numFiles {
+		createUniquePDF(t, tmpDir, fmt.Sprintf("file_%d.pdf", i))
+	}
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	// Use max_concurrent_files = 4
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	cfg.Scan.MaxConcurrentFiles = config.IntPtr(4)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	scanner := New(cfg, db, logger)
+
+	result, err := scanner.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+
+	if result.Stats.TotalFiles != numFiles {
+		t.Errorf("TotalFiles = %d, want %d", result.Stats.TotalFiles, numFiles)
+	}
+	if len(result.Errors) != 0 {
+		t.Errorf("Errors = %d, want 0", len(result.Errors))
+	}
+	if len(result.Documents) != numFiles {
+		t.Errorf("Documents in result = %d, want %d", len(result.Documents), numFiles)
+	}
+
+	// Verify DB has all documents
+	var dbCount int
+	if err := db.QueryRow("SELECT COUNT(*) FROM documents").Scan(&dbCount); err != nil {
+		t.Fatal(err)
+	}
+	if dbCount != numFiles {
+		t.Errorf("documents in DB = %d, want %d", dbCount, numFiles)
 	}
 }

@@ -104,13 +104,13 @@ func TestMigrate(t *testing.T) {
 		t.Errorf("tags count = %d, want 9", tagCount)
 	}
 
-	// Verify migration version
+	// Verify migration version (001_initial + 002_track_modified)
 	var version int
 	if err := db.QueryRow("SELECT MAX(version) FROM _migrations").Scan(&version); err != nil {
 		t.Fatalf("getting migration version: %v", err)
 	}
-	if version != 1 {
-		t.Errorf("migration version = %d, want 1", version)
+	if version != 2 {
+		t.Errorf("migration version = %d, want 2 (001_initial + 002_track_modified)", version)
 	}
 }
 

@@ -572,15 +572,22 @@ func TestScan_ProgressEvents(t *testing.T) {
 		t.Fatalf("Scan() error = %v", err)
 	}
 
-	if len(progress) != 1 {
-		t.Errorf("progress events = %d, want 1", len(progress))
+	if len(progress) != 2 {
+		t.Errorf("progress events = %d, want 2 (collect + scan)", len(progress))
 	}
 
-	event := <-progress
-	if event.Phase != "scan" {
-		t.Errorf("event.Phase = %q, want scan", event.Phase)
+	// First event should be collect phase
+	event1 := <-progress
+	if event1.Phase != "collect" {
+		t.Errorf("event[0].Phase = %q, want collect", event1.Phase)
 	}
-	if event.Current != 1 {
-		t.Errorf("event.Current = %d, want 1", event.Current)
+
+	// Last event should be scan phase
+	event2 := <-progress
+	if event2.Phase != "scan" {
+		t.Errorf("event[1].Phase = %q, want scan", event2.Phase)
+	}
+	if event2.Current != 1 {
+		t.Errorf("event[1].Current = %d, want 1", event2.Current)
 	}
 }
