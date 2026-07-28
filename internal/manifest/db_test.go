@@ -794,3 +794,354 @@ func TestSanitizeFTSQuery(t *testing.T) {
 		}
 	}
 }
+
+// testDataDoc represents a real document from testdata/ for integration testing.
+type testDataDoc struct {
+	ID           string
+	SourcePath   string
+	FileType     FileType
+	FileSize     int64
+	PageCount    *int
+	HasTextLayer bool
+	Language     Language
+	Tipo         string
+	Subject      string
+	Autor        *string
+	Titulo       string
+	Anio         *string
+	Editorial    *string
+	Description  string
+	Confidence   float64
+}
+
+func testDocs() []testDataDoc {
+	return []testDataDoc{
+		{
+			ID:           "9ce4722dca9650c6ce47bc082318f031bebec998b0803daca9f29bed6c44cc27",
+			SourcePath:   "/Users/test/testdata/Libros/Physics/Classical Electrodynamics - Jackson.pdf",
+			FileType:     FileTypePDF,
+			FileSize:     26623622,
+			HasTextLayer: false,
+			Language:     LanguageEN,
+			Tipo:         "libro",
+			Subject:      "Physics",
+			Autor:        strPtr("John David Jackson"),
+			Titulo:       "Classical Electrodynamics",
+			Anio:         strPtr("1999"),
+			Editorial:    strPtr("Wiley"),
+			Description:  "Classic graduate textbook on electrodynamics",
+			Confidence:   0.95,
+		},
+		{
+			ID:           "bead22240b7be65e2bda3613b7b0083f6383e849944dc9e1b0204f020cb79b97",
+			SourcePath:   "/Users/test/testdata/Libros/Physics/John David Jackson - Classical electrodynamics-Wiley (1999).djvu",
+			FileType:     FileTypeDjVu,
+			FileSize:     9818885,
+			HasTextLayer: false,
+			Language:     LanguageEN,
+			Tipo:         "libro",
+			Subject:      "Physics",
+			Autor:        strPtr("John David Jackson"),
+			Titulo:       "Classical Electrodynamics",
+			Anio:         strPtr("1999"),
+			Editorial:    strPtr("Wiley"),
+			Description:  "Classic graduate textbook on electrodynamics (DjVu format)",
+			Confidence:   0.95,
+		},
+		{
+			ID:           "df562a0a96ca3fcd8e7fdb60fa5994e8eea5925dc60bd1c12abb30a39cdee3fa",
+			SourcePath:   "/Users/test/testdata/Manuales/Physics/56406005-Jackson-Solutions.pdf",
+			FileType:     FileTypePDF,
+			FileSize:     11670737,
+			HasTextLayer: true,
+			Language:     LanguageEN,
+			Tipo:         "manual",
+			Subject:      "Physics",
+			Autor:        strPtr("Unknown"),
+			Titulo:       "Solutions to Classical Electrodynamics",
+			Anio:         strPtr("1999"),
+			Editorial:    strPtr("Wiley"),
+			Description:  "Solutions manual for Jackson's Classical Electrodynamics",
+			Confidence:   0.90,
+		},
+		{
+			ID:           "e181911c57714296cca6110eb725751c92e4b15d31b4d8ad4bcd07dfb502319c",
+			SourcePath:   "/Users/test/testdata/Documentos Personales/acta_nacimiento.pdf",
+			FileType:     FileTypePDF,
+			FileSize:     533530,
+			PageCount:    intPtr(1),
+			HasTextLayer: true,
+			Language:     LanguageES,
+			Tipo:         "personal",
+			Subject:      "",
+			Autor:        nil,
+			Titulo:       "Acta de nacimiento",
+			Anio:         nil,
+			Editorial:    nil,
+			Description:  "Documento personal de nacimiento",
+			Confidence:   1.0,
+		},
+		{
+			ID:           "6089eaa5c66d9c58ed51995c30b9291e13aae219b8357eee8415f4f1f7dc50e9",
+			SourcePath:   "/Users/test/testdata/Notas/Physics/qft3.pdf",
+			FileType:     FileTypePDF,
+			FileSize:     85397,
+			HasTextLayer: true,
+			Language:     LanguageES,
+			Tipo:         "notas",
+			Subject:      "Physics",
+			Autor:        nil,
+			Titulo:       "Tercera tarea de Teoría Cuántica de Campos",
+			Anio:         nil,
+			Editorial:    nil,
+			Description:  "Tarea de homework de QFT",
+			Confidence:   0.85,
+		},
+		{
+			ID:           "4d369d231efc6672270e1f06b511c5c3ee15bd471ed9d27d83cd276abc968a10",
+			SourcePath:   "/Users/test/testdata/Notas/Physics/EjerciciosParticulas.pdf",
+			FileType:     FileTypePDF,
+			FileSize:     174174,
+			HasTextLayer: true,
+			Language:     LanguageES,
+			Tipo:         "notas",
+			Subject:      "Physics",
+			Autor:        strPtr("Pablo Roig Garcés"),
+			Titulo:       "Ejercicios de Física de Partículas Elementales",
+			Anio:         nil,
+			Editorial:    nil,
+			Description:  "Ejercicios de partículas elementales",
+			Confidence:   0.85,
+		},
+		{
+			ID:           "c17195960ba23e33af19322a34a613cf8a90e7848d6ee499666c4c6003ccef72",
+			SourcePath:   "/Users/test/testdata/Papers/Physics/Tan et al. - 2019 - Some characteristic parameters of proton from the bag model.pdf",
+			FileType:     FileTypePDF,
+			FileSize:     106787,
+			PageCount:    intPtr(4),
+			HasTextLayer: true,
+			Language:     LanguageEN,
+			Tipo:         "paper",
+			Subject:      "Physics",
+			Autor:        strPtr("Tan et al."),
+			Titulo:       "Some Characteristic Parameters of Proton from the Bag Model",
+			Anio:         strPtr("2019"),
+			Editorial:    nil,
+			Description:  "Academic paper on proton parameters",
+			Confidence:   0.92,
+		},
+		{
+			ID:           "9c31359e94b132ded76643fabbbc6715e097030cd5bd9b5330c8b26f2d48bdc6",
+			SourcePath:   "/Users/test/testdata/Tesis/Physics/Tesis.pdf",
+			FileType:     FileTypePDF,
+			FileSize:     4457356,
+			HasTextLayer: true,
+			Language:     LanguageES,
+			Tipo:         "tesis",
+			Subject:      "Physics",
+			Autor:        strPtr("Unknown"),
+			Titulo:       "Tesis de Ingeniería en Física Aplicada",
+			Anio:         nil,
+			Editorial:    strPtr("Universidad Tecnológica de la Mixteca"),
+			Description:  "Tesis de grado en Ingeniería en Física Aplicada",
+			Confidence:   0.88,
+		},
+		{
+			ID:           "d6f2a0178806803507be557c65eefa5439e0b2312315458c96eb69a445b33173",
+			SourcePath:   "/Users/test/testdata/Libros/Statistics/Bayesian Data Analysis.pdf",
+			FileType:     FileTypePDF,
+			FileSize:     66473875,
+			HasTextLayer: true,
+			Language:     LanguageEN,
+			Tipo:         "libro",
+			Subject:      "Statistics",
+			Autor:        strPtr("Andrew Gelman et al."),
+			Titulo:       "Bayesian Data Analysis",
+			Anio:         strPtr("2013"),
+			Editorial:    strPtr("CRC Press"),
+			Description:  "Comprehensive textbook on Bayesian statistical methods",
+			Confidence:   0.95,
+		},
+		{
+			ID:           "7dafdf75f2cba6187231a8f1b688f2242baa61530bc89006a6a079a0b740cfba",
+			SourcePath:   "/Users/test/testdata/Libros/Machine Learning/Hands-On_Machine_Learning_with_Scikit-Learn-Keras-and-TensorFlow-2nd-Edition-Aurelien-Geron.pdf",
+			FileType:     FileTypePDF,
+			FileSize:     60050105,
+			PageCount:    intPtr(851),
+			HasTextLayer: true,
+			Language:     LanguageEN,
+			Tipo:         "libro",
+			Subject:      "Machine Learning",
+			Autor:        strPtr("Aurélien Géron"),
+			Titulo:       "Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow",
+			Anio:         strPtr("2019"),
+			Editorial:    strPtr("O'Reilly"),
+			Description:  "Practical guide to ML with Python",
+			Confidence:   0.95,
+		},
+		{
+			ID:           "edfb143de104642e1dd88288b6b630381fa81875b7d0b51df1baaca760a9643b",
+			SourcePath:   "/Users/test/testdata/Libros/Engineering/(Cambridge Mathematical Library) G. K. Batchelor - An Introduction to Fluid Dynamics -Cambridge University Press (2000).djvu",
+			FileType:     FileTypeDjVu,
+			FileSize:     8476701,
+			HasTextLayer: false,
+			Language:     LanguageEN,
+			Tipo:         "libro",
+			Subject:      "Engineering",
+			Autor:        strPtr("G. K. Batchelor"),
+			Titulo:       "An Introduction to Fluid Dynamics",
+			Anio:         strPtr("2000"),
+			Editorial:    strPtr("Cambridge University Press"),
+			Description:  "Classic textbook on fluid dynamics",
+			Confidence:   0.95,
+		},
+		{
+			ID:           "0e2517d7f62b908fd3fba49522e946831b28970b2fc47256dfad373ae6c93cb4",
+			SourcePath:   "/Users/test/testdata/Libros/Grammar/Jane Straus, Lester Kaufman, Tom Stern - The Blue Book of Grammar and Punctuation_ An Easy-to-Use Guide with Clear Rules, Real-World Examples, and Reproducible Quizzes-Wiley (2014).epub",
+			FileType:     FileTypeEPUB,
+			FileSize:     1605671,
+			HasTextLayer: true,
+			Language:     LanguageEN,
+			Tipo:         "libro",
+			Subject:      "Grammar",
+			Autor:        strPtr("Jane Straus"),
+			Titulo:       "The Blue Book of Grammar and Punctuation",
+			Anio:         strPtr("2014"),
+			Editorial:    strPtr("Wiley"),
+			Description:  "Grammar and punctuation guide",
+			Confidence:   0.90,
+		},
+	}
+}
+
+func intPtr(i int) *int { return &i }
+
+func TestIntegration_TestdataDocuments(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	db := openTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	docs := testDocs()
+
+	// Step 1: Insert all 12 documents
+	for _, d := range docs {
+		doc := &Document{
+			ID:           d.ID,
+			SourcePath:   d.SourcePath,
+			FileType:     d.FileType,
+			FileSize:     d.FileSize,
+			PageCount:    d.PageCount,
+			HasTextLayer: d.HasTextLayer,
+			Language:     &d.Language,
+		}
+		if err := db.InsertDocument(ctx, doc); err != nil {
+			t.Fatalf("InsertDocument(%s) error = %v", d.Titulo, err)
+		}
+	}
+
+	// Step 2: Verify all 12 documents were inserted
+	listed, err := db.ListDocuments(ctx, 0, 0)
+	if err != nil {
+		t.Fatalf("ListDocuments() error = %v", err)
+	}
+	if len(listed) != 12 {
+		t.Fatalf("ListDocuments() returned %d, want 12", len(listed))
+	}
+
+	// Step 3: Insert classifications for each document
+	for _, d := range docs {
+		source := SourceLLM
+		if d.Confidence == 1.0 {
+			source = SourceHeuristic
+		}
+
+		c := &Classification{
+			DocumentID:   d.ID,
+			Source:       source,
+			Model:        strPtr("qwen3:8b"),
+			Tipo:         strPtr(d.Tipo),
+			TipoOriginal: strPtr(d.Tipo),
+			Subject:      strPtr(d.Subject),
+			Autor:        d.Autor,
+			Titulo:       strPtr(d.Titulo),
+			Anio:         d.Anio,
+			Editorial:    d.Editorial,
+			Description:  strPtr(d.Description),
+			Confidence:   d.Confidence,
+			Accepted:     true,
+		}
+		if err := db.InsertClassification(ctx, c); err != nil {
+			t.Fatalf("InsertClassification(%s) error = %v", d.Titulo, err)
+		}
+	}
+
+	// Step 4: Verify each document has an accepted classification
+	for _, d := range docs {
+		class, err := db.GetAcceptedClassification(ctx, d.ID)
+		if err != nil {
+			t.Errorf("GetAcceptedClassification(%s) error = %v", d.Titulo, err)
+			continue
+		}
+		if class == nil {
+			t.Errorf("GetAcceptedClassification(%s) = nil, want classification", d.Titulo)
+			continue
+		}
+		if class.Titulo == nil || *class.Titulo != d.Titulo {
+			titulo := ""
+			if class.Titulo != nil {
+				titulo = *class.Titulo
+			}
+			t.Errorf("classification.Titulo = %q, want %q", titulo, d.Titulo)
+		}
+	}
+
+	// Step 5: Verify stats
+	stats, err := db.GetStats(ctx)
+	if err != nil {
+		t.Fatalf("GetStats() error = %v", err)
+	}
+	if stats.Documents != 12 {
+		t.Errorf("stats.Documents = %d, want 12", stats.Documents)
+	}
+	if stats.Classifications != 12 {
+		t.Errorf("stats.Classifications = %d, want 12", stats.Classifications)
+	}
+	if stats.Accepted != 12 {
+		t.Errorf("stats.Accepted = %d, want 12", stats.Accepted)
+	}
+
+	// Step 6: Verify FTS search works
+	results, err := db.SearchFTS(ctx, "Jackson")
+	if err != nil {
+		t.Fatalf("SearchFTS(Jackson) error = %v", err)
+	}
+	if len(results) != 3 {
+		t.Errorf("SearchFTS(Jackson) returned %d results, want 3", len(results))
+	}
+
+	results, err = db.SearchFTS(ctx, "machine learning")
+	if err != nil {
+		t.Fatalf("SearchFTS(machine learning) error = %v", err)
+	}
+	if len(results) != 1 {
+		t.Errorf("SearchFTS(machine learning) returned %d results, want 1", len(results))
+	}
+
+	// Step 7: Verify by-type stats
+	pdfCount := stats.ByType["pdf"]
+	if pdfCount != 9 {
+		t.Errorf("stats.ByType[pdf] = %d, want 9", pdfCount)
+	}
+	djvuCount := stats.ByType["djvu"]
+	if djvuCount != 2 {
+		t.Errorf("stats.ByType[djvu] = %d, want 2", djvuCount)
+	}
+	epubCount := stats.ByType["epub"]
+	if epubCount != 1 {
+		t.Errorf("stats.ByType[epub] = %d, want 1", epubCount)
+	}
+}
