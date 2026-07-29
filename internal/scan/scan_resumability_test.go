@@ -22,9 +22,54 @@ import (
 func createUniquePDF(t *testing.T, dir, name string) string {
 	t.Helper()
 	path := filepath.Join(dir, name)
-	// Write filename + padding to ensure unique SHA-256 and > 10KB
 	data := []byte(name + strings.Repeat("x", 1024*11))
 	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// createUniqueDOCX creates a file with .docx extension for scan coverage.
+// Content is not a valid DOCX — scan only checks extension + hash.
+func createUniqueDOCX(t *testing.T, dir, name string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	data := []byte(name + strings.Repeat("x", 1024*11))
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// createPDFWithText creates a minimal PDF with embedded text for heuristic tests.
+func createPDFWithText(t *testing.T, dir, name, text string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	escaped := strings.ReplaceAll(text, "\\", "\\\\")
+	escaped = strings.ReplaceAll(escaped, "(", "\\(")
+	escaped = strings.ReplaceAll(escaped, ")", "\\)")
+	content := fmt.Sprintf(`%%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R>>endobj
+4 0 obj<</Length 44>>stream
+BT /F1 12 Tf 100 700 Td (%s) Tj ET
+endstream
+endobj
+5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000266 00000 n 
+0000000360 00000 n 
+trailer<</Size 6/Root 1 0 R>>startxref
+410
+%%%%EOF
+`, escaped)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return path
@@ -929,5 +974,89 @@ func TestScan_WouldInsertUpdate_PartialSkip(t *testing.T) {
 	if result2.Stats.TotalFiles != sum {
 		t.Errorf("TotalFiles (%d) != WouldInsert (%d) + WouldUpdate (%d) + SkippedOnMtime (%d)",
 			result2.Stats.TotalFiles, result2.Stats.WouldInsert, result2.Stats.WouldUpdate, result2.Stats.SkippedOnMtime)
+	}
+}
+
+func TestScan_DOCX_Detected(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	createUniqueDOCX(t, tmpDir, "test_letter.docx")
+	createUniqueDOCX(t, tmpDir, "another.docx")
+
+	scanner := New(cfg, db, logger)
+	result, err := scanner.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+
+	if result.Stats.TotalFiles != 2 {
+		t.Errorf("TotalFiles = %d, want 2", result.Stats.TotalFiles)
+	}
+	if result.Stats.ByType["docx"] != 2 {
+		t.Errorf("ByType[docx] = %d, want 2", result.Stats.ByType["docx"])
+	}
+}
+
+func TestScan_PDFWithISBN_Detected(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(0)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	isbnPath := createPDFWithText(t, tmpDir, "isbn_book.pdf", "ISBN 978-0-262-04630-5 Introduction to Algorithms")
+
+	scanner := New(cfg, db, logger)
+	result, err := scanner.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+
+	if result.Stats.TotalFiles != 1 {
+		t.Errorf("TotalFiles = %d, want 1", result.Stats.TotalFiles)
+	}
+	if result.Stats.ByType["pdf"] != 1 {
+		t.Errorf("ByType[pdf] = %d, want 1", result.Stats.ByType["pdf"])
+	}
+
+	// Verify the ISBN PDF was scanned (no text extraction in scan phase)
+	found := false
+	for _, doc := range result.Documents {
+		if doc.SourcePath == isbnPath {
+			found = true
+			if doc.PageCount != nil && *doc.PageCount != 1 {
+				t.Errorf("PageCount = %v, want 1", doc.PageCount)
+			}
+		}
+	}
+	if !found {
+		t.Error("ISBN PDF not found in scan results")
 	}
 }
