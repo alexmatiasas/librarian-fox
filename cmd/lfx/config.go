@@ -52,12 +52,15 @@ func newConfigShowCmd() *cobra.Command {
 			fmt.Printf("  manifest_path = %q\n", config.StrVal(cfg.General.ManifestPath))
 			fmt.Printf("  log_level = %q\n", config.StrVal(cfg.General.LogLevel))
 			fmt.Printf("  dry_run = %v\n", config.BoolVal(cfg.General.DryRun))
+			fmt.Printf("  output_format = %q\n", config.StrVal(cfg.General.OutputFormat))
 
 			fmt.Printf("\n[scan]\n")
 			fmt.Printf("  max_depth = %d\n", config.IntVal(cfg.Scan.MaxDepth))
 			fmt.Printf("  min_file_size_kb = %d\n", config.IntVal(cfg.Scan.MinFileSizeKB))
 			fmt.Printf("  max_file_size_mb = %d\n", config.IntVal(cfg.Scan.MaxFileSizeMB))
 			fmt.Printf("  extensions = %v\n", cfg.Scan.Extensions)
+			fmt.Printf("  exclude_dirs = %v\n", cfg.Scan.ExcludeDirs)
+			fmt.Printf("  exclude_globs = %v\n", cfg.Scan.ExcludeGlobs)
 
 			fmt.Printf("\n[llm]\n")
 			fmt.Printf("  provider = %q\n", config.StrVal(cfg.LLM.Provider))
@@ -91,13 +94,15 @@ func newConfigShowCmd() *cobra.Command {
 			fmt.Printf("  metadata_sources = %v\n", cfg.Metadata.MetadataSources)
 
 			fmt.Printf("\n[ocr]\n")
-			fmt.Printf("  languages = %v\n", cfg.OCR.Languages)
-			fmt.Printf("  max_concurrent = %d\n", config.IntVal(cfg.OCR.MaxConcurrent))
-			if cfg.OCR.Quality != nil {
-				fmt.Printf("\n[ocr.quality]\n")
-				fmt.Printf("  blur_threshold = %.1f\n", config.FloatVal(cfg.OCR.Quality.BlurThreshold))
-				fmt.Printf("  skew_threshold = %.1f\n", config.FloatVal(cfg.OCR.Quality.SkewThreshold))
-				fmt.Printf("  contrast_min_spread = %.1f\n", config.FloatVal(cfg.OCR.Quality.ContrastMinSpread))
+			if cfg.OCR != nil {
+				fmt.Printf("  languages = %v\n", cfg.OCR.Languages)
+				fmt.Printf("  max_concurrent = %d\n", config.IntVal(cfg.OCR.MaxConcurrent))
+				if cfg.OCR.Quality != nil {
+					fmt.Printf("\n[ocr.quality]\n")
+					fmt.Printf("  blur_threshold = %.1f\n", config.FloatVal(cfg.OCR.Quality.BlurThreshold))
+					fmt.Printf("  skew_threshold = %.1f\n", config.FloatVal(cfg.OCR.Quality.SkewThreshold))
+					fmt.Printf("  contrast_min_spread = %.1f\n", config.FloatVal(cfg.OCR.Quality.ContrastMinSpread))
+				}
 			}
 
 			fmt.Printf("\n[apply]\n")
@@ -109,7 +114,7 @@ func newConfigShowCmd() *cobra.Command {
 			fmt.Printf("  backup_max_count = %d\n", config.IntVal(cfg.Apply.BackupMaxCount))
 			fmt.Printf("  backup_max_age_days = %d\n", config.IntVal(cfg.Apply.BackupMaxAgeDays))
 
-			if cfg.Kavita.Enabled != nil && *cfg.Kavita.Enabled {
+			if config.BoolVal(cfg.Kavita.Enabled) {
 				fmt.Printf("\n[kavita]\n")
 				fmt.Printf("  enabled = true\n")
 				fmt.Printf("  port = %d\n", config.IntVal(cfg.Kavita.Port))

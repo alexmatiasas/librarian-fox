@@ -13,6 +13,7 @@ type Document struct {
 	NeedsOCR     bool
 	QualityFlags *string
 	Language     *Language
+	ModifiedAt   *string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

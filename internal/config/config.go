@@ -71,15 +71,18 @@ type GeneralConfig struct {
 	ManifestPath *string `json:"manifest_path,omitempty" toml:"manifest_path" jsonschema:"default=~/.local/share/lfx/manifest.db,description=Path to the SQLite manifest database"`
 	LogLevel     *string `json:"log_level,omitempty" toml:"log_level" jsonschema:"enum=debug,enum=info,enum=warn,enum=error,default=info,description=Logging verbosity level"`
 	DryRun       *bool   `json:"dry_run,omitempty" toml:"dry_run" jsonschema:"default=true,description=If true, only report what would happen without modifying files"`
+	OutputFormat *string `json:"output_format,omitempty" toml:"output_format" jsonschema:"enum=text,enum=table,default=table,description=CLI output format: text (pipe-friendly) or table (aligned columns)"`
 }
 
 // ScanConfig holds file discovery and filtering settings.
 type ScanConfig struct {
-	MaxDepth      *int     `json:"max_depth,omitempty" toml:"max_depth" jsonschema:"default=5,minimum=1,maximum=20,description=Maximum directory recursion depth from root"`
-	MinFileSizeKB *int     `json:"min_file_size_kb,omitempty" toml:"min_file_size_kb" jsonschema:"default=10,minimum=0,description=Ignore files smaller than this (in KB)"`
-	MaxFileSizeMB *int     `json:"max_file_size_mb,omitempty" toml:"max_file_size_mb" jsonschema:"default=500,minimum=1,description=Ignore files larger than this (in MB)"`
-	ExcludeDirs   []string `json:"exclude_dirs,omitempty" toml:"exclude_dirs" jsonschema:"description=Directory names to skip during scanning (symlinks always skipped)"`
-	Extensions    []string `json:"extensions,omitempty" toml:"extensions" jsonschema:"description=File extensions to process (without the dot)"`
+	MaxDepth           *int     `json:"max_depth,omitempty" toml:"max_depth" jsonschema:"default=5,minimum=1,maximum=20,description=Maximum directory recursion depth from root"`
+	MinFileSizeKB      *int     `json:"min_file_size_kb,omitempty" toml:"min_file_size_kb" jsonschema:"default=10,minimum=0,description=Ignore files smaller than this (in KB)"`
+	MaxFileSizeMB      *int     `json:"max_file_size_mb,omitempty" toml:"max_file_size_mb" jsonschema:"default=500,minimum=1,description=Ignore files larger than this (in MB)"`
+	ExcludeDirs        []string `json:"exclude_dirs,omitempty" toml:"exclude_dirs" jsonschema:"description=Directory names to skip during scanning (symlinks always skipped)"`
+	ExcludeGlobs       []string `json:"exclude_globs,omitempty" toml:"exclude_globs" jsonschema:"description=File glob patterns to exclude (e.g. *.tmp, *.bak)"`
+	Extensions         []string `json:"extensions,omitempty" toml:"extensions" jsonschema:"description=File extensions to process (without the dot)"`
+	MaxConcurrentFiles *int     `json:"max_concurrent_files,omitempty" toml:"max_concurrent_files" jsonschema:"default=4,minimum=1,maximum=16,description=Number of files to process in parallel during scan"`
 }
 
 // LLMConfig holds LLM provider settings for document classification.
@@ -163,6 +166,7 @@ func DefaultConfig() *Config {
 			ManifestPath: StrPtr("~/.local/share/lfx/manifest.db"),
 			LogLevel:     StrPtr("info"),
 			DryRun:       BoolPtr(true),
+			OutputFormat: StrPtr("table"),
 		},
 		Scan: &ScanConfig{
 			MaxDepth:      IntPtr(5),
@@ -300,6 +304,10 @@ func Validate(cfg *Config) error {
 		if !validLogLevels[StrVal(cfg.General.LogLevel)] {
 			errs = append(errs, fmt.Sprintf("[general].log_level must be one of: debug, info, warn, error (got %q)", StrVal(cfg.General.LogLevel)))
 		}
+		validOutputFormats := map[string]bool{"text": true, "table": true}
+		if !validOutputFormats[StrVal(cfg.General.OutputFormat)] {
+			errs = append(errs, fmt.Sprintf("[general].output_format must be one of: text, table (got %q)", StrVal(cfg.General.OutputFormat)))
+		}
 	}
 
 	if cfg.LLM != nil {
@@ -422,6 +430,9 @@ func mergeGeneral(dst, src *GeneralConfig) {
 	if src.DryRun != nil {
 		dst.DryRun = src.DryRun
 	}
+	if src.OutputFormat != nil {
+		dst.OutputFormat = src.OutputFormat
+	}
 }
 
 func mergeScan(dst, src *ScanConfig) {
@@ -437,8 +448,14 @@ func mergeScan(dst, src *ScanConfig) {
 	if len(src.ExcludeDirs) > 0 {
 		dst.ExcludeDirs = src.ExcludeDirs
 	}
+	if len(src.ExcludeGlobs) > 0 {
+		dst.ExcludeGlobs = src.ExcludeGlobs
+	}
 	if len(src.Extensions) > 0 {
 		dst.Extensions = src.Extensions
+	}
+	if src.MaxConcurrentFiles != nil {
+		dst.MaxConcurrentFiles = src.MaxConcurrentFiles
 	}
 }
 

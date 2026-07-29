@@ -104,13 +104,13 @@ func TestMigrate(t *testing.T) {
 		t.Errorf("tags count = %d, want 9", tagCount)
 	}
 
-	// Verify migration version
+	// Verify migration version (001_initial + 002_track_modified)
 	var version int
 	if err := db.QueryRow("SELECT MAX(version) FROM _migrations").Scan(&version); err != nil {
 		t.Fatalf("getting migration version: %v", err)
 	}
-	if version != 1 {
-		t.Errorf("migration version = %d, want 1", version)
+	if version != 2 {
+		t.Errorf("migration version = %d, want 2 (001_initial + 002_track_modified)", version)
 	}
 }
 
@@ -633,6 +633,126 @@ func TestGetDocument_NotFound(t *testing.T) {
 	expected := "document not found: nonexistent-id"
 	if err.Error() != expected {
 		t.Errorf("error = %q, want %q", err.Error(), expected)
+	}
+}
+
+func TestFindByPath_Found(t *testing.T) {
+	db := openTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+
+	modifiedAt := "2024-01-15T10:00:00Z"
+	lang := LanguageEN
+	doc := &Document{
+		ID:           "test-doc-path",
+		SourcePath:   "/some/path/doc.pdf",
+		FileType:     "pdf",
+		FileSize:     5000,
+		PageCount:    intPtr(42),
+		HasTextLayer: true,
+		NeedsOCR:     false,
+		Language:     &lang,
+		ModifiedAt:   &modifiedAt,
+	}
+
+	if err := db.InsertDocument(ctx, doc); err != nil {
+		t.Fatalf("InsertDocument() error = %v", err)
+	}
+
+	got, err := db.FindByPath(ctx, "/some/path/doc.pdf")
+	if err != nil {
+		t.Fatalf("FindByPath() error = %v", err)
+	}
+	if got == nil {
+		t.Fatal("FindByPath() returned nil, want document")
+	}
+
+	if got.ID != "test-doc-path" {
+		t.Errorf("ID = %q, want %q", got.ID, "test-doc-path")
+	}
+	if got.SourcePath != "/some/path/doc.pdf" {
+		t.Errorf("SourcePath = %q, want %q", got.SourcePath, "/some/path/doc.pdf")
+	}
+	if got.FileType != "pdf" {
+		t.Errorf("FileType = %q, want pdf", got.FileType)
+	}
+	if got.FileSize != 5000 {
+		t.Errorf("FileSize = %d, want 5000", got.FileSize)
+	}
+	if got.PageCount == nil || *got.PageCount != 42 {
+		t.Errorf("PageCount = %v, want 42", got.PageCount)
+	}
+	if got.HasTextLayer != true {
+		t.Errorf("HasTextLayer = %v, want true", got.HasTextLayer)
+	}
+	if got.Language == nil || *got.Language != LanguageEN {
+		t.Errorf("Language = %v, want eng", got.Language)
+	}
+	if got.ModifiedAt == nil || *got.ModifiedAt != modifiedAt {
+		t.Errorf("ModifiedAt = %v, want %v", got.ModifiedAt, modifiedAt)
+	}
+}
+
+func TestFindByPath_NotFound(t *testing.T) {
+	db := openTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+
+	got, err := db.FindByPath(ctx, "/nonexistent/path.pdf")
+	if err != nil {
+		t.Fatalf("FindByPath() error = %v", err)
+	}
+	if got != nil {
+		t.Errorf("FindByPath() = %v, want nil", got)
+	}
+}
+
+func TestFindByPath_ReturnsLatestOnDuplicate(t *testing.T) {
+	db := openTestDB(t)
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+
+	// Two different IDs, same path (e.g. file replaced)
+	modifiedAt1 := "2024-01-01T00:00:00Z"
+	doc1 := &Document{
+		ID:         "doc-v1",
+		SourcePath: "/shared/path/doc.pdf",
+		FileType:   "pdf",
+		FileSize:   100,
+		ModifiedAt: &modifiedAt1,
+	}
+	if err := db.InsertDocument(ctx, doc1); err != nil {
+		t.Fatalf("InsertDocument() v1 error = %v", err)
+	}
+
+	modifiedAt2 := "2024-06-01T00:00:00Z"
+	doc2 := &Document{
+		ID:         "doc-v2",
+		SourcePath: "/shared/path/doc.pdf",
+		FileType:   "pdf",
+		FileSize:   200,
+		ModifiedAt: &modifiedAt2,
+	}
+	if err := db.InsertDocument(ctx, doc2); err != nil {
+		t.Fatalf("InsertDocument() v2 error = %v", err)
+	}
+
+	// FindByPath should return the latest (by updated_at DESC)
+	got, err := db.FindByPath(ctx, "/shared/path/doc.pdf")
+	if err != nil {
+		t.Fatalf("FindByPath() error = %v", err)
+	}
+	if got == nil {
+		t.Fatal("FindByPath() returned nil")
+	}
+	if got.ID != "doc-v2" {
+		t.Errorf("ID = %q, want doc-v2 (latest)", got.ID)
+	}
+	if got.FileSize != 200 {
+		t.Errorf("FileSize = %d, want 200", got.FileSize)
 	}
 }
 

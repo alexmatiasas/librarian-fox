@@ -119,6 +119,15 @@
           "type": "boolean",
           "description": "If true",
           "default": true
+        },
+        "output_format": {
+          "type": "string",
+          "enum": [
+            "text",
+            "table"
+          ],
+          "description": "CLI output format: text (pipe-friendly) or table (aligned columns)",
+          "default": "table"
         }
       },
       "additionalProperties": false,
@@ -374,12 +383,26 @@
           "type": "array",
           "description": "Directory names to skip during scanning (symlinks always skipped)"
         },
+        "exclude_globs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "File glob patterns to exclude (e.g. *.tmp"
+        },
         "extensions": {
           "items": {
             "type": "string"
           },
           "type": "array",
           "description": "File extensions to process (without the dot)"
+        },
+        "max_concurrent_files": {
+          "type": "integer",
+          "maximum": 16,
+          "minimum": 1,
+          "description": "Number of files to process in parallel during scan",
+          "default": 4
         }
       },
       "additionalProperties": false,

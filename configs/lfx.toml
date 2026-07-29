@@ -9,11 +9,13 @@ library_dir = "~/Library"
 manifest_path = "~/.local/share/lfx/manifest.db"
 log_level = "info"
 dry_run = true
+output_format = "table"
 
 [scan]
 max_depth = 5
 min_file_size_kb = 10
 max_file_size_mb = 500
+max_concurrent_files = 4
 exclude_dirs = [
     "Library", "node_modules", ".cache", ".Trash", ".npm", ".nvm",
     ".cargo", ".rustup", "go/pkg", "go/src", ".local/share/Trash",
