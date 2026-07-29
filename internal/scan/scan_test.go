@@ -591,3 +591,265 @@ func TestScan_ProgressEvents(t *testing.T) {
 		t.Errorf("event[1].Current = %d, want 1", event2.Current)
 	}
 }
+
+func TestMatchesGlob(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		patterns []string
+		want     bool
+	}{
+		{"no patterns", "/tmp/foo.pdf", nil, false},
+		{"empty patterns", "/tmp/foo.pdf", []string{}, false},
+		{"matching", "/tmp/foo.tmp", []string{"*.tmp"}, true},
+		{"not matching", "/tmp/foo.pdf", []string{"*.tmp"}, false},
+		{"multiple one matches", "/tmp/foo.bak", []string{"*.tmp", "*.bak", "*.old"}, true},
+		{"multiple none match", "/tmp/foo.pdf", []string{"*.tmp", "*.bak"}, false},
+		{"basename match", "/very/deep/path/foo.tmp", []string{"*.tmp"}, true},
+		{"prefix glob", "report_v2.pdf", []string{"report_*"}, true},
+		{"exact match", "notes.txt", []string{"notes.txt"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := matchesGlob(tt.path, tt.patterns)
+			if got != tt.want {
+				t.Errorf("matchesGlob(%q, %v) = %v, want %v", tt.path, tt.patterns, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExpandTilde(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("UserHomeDir() error = %v", err)
+	}
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"no tilde", "/absolute/path"},
+		{"tilde alone", "~"},
+		{"tilde with subdir", "~/Documents"},
+		{"tilde with deep path", "~/a/b/c/file.pdf"},
+		{"tilde in middle", "/foo/~/bar"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := expandTilde(tt.path)
+			if strings.HasPrefix(tt.path, "~") {
+				if !strings.HasPrefix(got, home) {
+					t.Errorf("expandTilde(%q) = %q, want prefix %q", tt.path, got, home)
+				}
+			} else {
+				if got != tt.path {
+					t.Errorf("expandTilde(%q) = %q, want %q", tt.path, got, tt.path)
+				}
+			}
+		})
+	}
+}
+
+func TestScan_DryRun(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	for _, name := range []string{"a.pdf", "b.pdf"} {
+		createUniquePDF(t, tmpDir, name)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	scanner := New(cfg, db, logger)
+	scanner.DryRun = true
+
+	result, err := scanner.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+
+	if result.Stats.TotalFiles != 2 {
+		t.Errorf("TotalFiles = %d, want 2", result.Stats.TotalFiles)
+	}
+	if result.Stats.WouldInsert != 2 {
+		t.Errorf("WouldInsert = %d, want 2", result.Stats.WouldInsert)
+	}
+	if result.Stats.WouldUpdate != 0 {
+		t.Errorf("WouldUpdate = %d, want 0", result.Stats.WouldUpdate)
+	}
+
+	// Verify no documents were inserted in the DB
+	all, err := db.ListDocuments(ctx, 0, 0)
+	if err != nil {
+		t.Fatalf("ListDocuments() error = %v", err)
+	}
+	if len(all) != 0 {
+		t.Errorf("DB has %d documents after dry-run, want 0", len(all))
+	}
+}
+
+func TestScan_DryRun_ThenRealRun(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	createUniquePDF(t, tmpDir, "doc.pdf")
+
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	// Dry run — no DB writes
+	scanner1 := New(cfg, db, logger)
+	scanner1.DryRun = true
+	result1, err := scanner1.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan(dry-run) error = %v", err)
+	}
+	if result1.Stats.WouldInsert != 1 {
+		t.Errorf("WouldInsert = %d, want 1", result1.Stats.WouldInsert)
+	}
+
+	// Real run — DB should have the doc
+	scanner2 := New(cfg, db, logger)
+	scanner2.DryRun = false
+	result2, err := scanner2.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan(real) error = %v", err)
+	}
+	if result2.Stats.WouldInsert != 1 {
+		t.Errorf("WouldInsert = %d, want 1", result2.Stats.WouldInsert)
+	}
+	if result2.Stats.WouldUpdate != 0 {
+		t.Errorf("WouldUpdate = %d, want 0", result2.Stats.WouldUpdate)
+	}
+
+	// Verify DB has the document
+	all, err := db.ListDocuments(ctx, 0, 0)
+	if err != nil {
+		t.Fatalf("ListDocuments() error = %v", err)
+	}
+	if len(all) != 1 {
+		t.Errorf("DB has %d documents after real run, want 1", len(all))
+	}
+}
+
+func TestScan_StatsOnly(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	for _, name := range []string{"a.pdf", "b.pdf", "c.pdf"} {
+		createUniquePDF(t, tmpDir, name)
+	}
+
+	// StatsOnly mode doesn't need a DB
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	scanner := New(cfg, nil, logger)
+	scanner.StatsOnly = true
+
+	result, err := scanner.Scan(context.Background(), tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+
+	if result.Stats.TotalFiles != 3 {
+		t.Errorf("TotalFiles = %d, want 3", result.Stats.TotalFiles)
+	}
+	if result.Stats.ByType["pdf"] != 3 {
+		t.Errorf("ByType[pdf] = %d, want 3", result.Stats.ByType["pdf"])
+	}
+	if len(result.Documents) != 0 {
+		t.Errorf("Documents = %d, want 0 (no processing in stats-only)", len(result.Documents))
+	}
+	if result.Stats.TotalSize <= 0 {
+		t.Errorf("TotalSize = %d, want > 0", result.Stats.TotalSize)
+	}
+}
+
+func TestScan_StatsOnly_NoDB(t *testing.T) {
+	// Verify stats-only works without a DB connection
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	scanner := New(cfg, nil, logger)
+	scanner.StatsOnly = true
+
+	tmpDir := t.TempDir()
+	createUniquePDF(t, tmpDir, "test.pdf")
+
+	result, err := scanner.Scan(context.Background(), tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+	if result.Stats.TotalFiles != 1 {
+		t.Errorf("TotalFiles = %d, want 1", result.Stats.TotalFiles)
+	}
+}
+
+func TestScan_EmptyDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test.db")
+
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	emptyDir := filepath.Join(tmpDir, "empty")
+	if err := os.Mkdir(emptyDir, 0o755); err != nil {
+		t.Fatalf("Mkdir() error = %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	scanner := New(cfg, db, logger)
+
+	result, err := scanner.Scan(ctx, emptyDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+
+	if result.Stats.TotalFiles != 0 {
+		t.Errorf("TotalFiles = %d, want 0", result.Stats.TotalFiles)
+	}
+	if len(result.Documents) != 0 {
+		t.Errorf("Documents = %d, want 0", len(result.Documents))
+	}
+	if len(result.Errors) != 0 {
+		t.Errorf("Errors = %d, want 0", len(result.Errors))
+	}
+}

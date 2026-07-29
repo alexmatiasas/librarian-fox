@@ -689,3 +689,245 @@ func TestScan_WorkerPool_ProcessesAll(t *testing.T) {
 		t.Errorf("documents in DB = %d, want %d", dbCount, numFiles)
 	}
 }
+
+// -----------------------------------------------------------
+// WouldInsert / WouldUpdate tracking
+// -----------------------------------------------------------
+
+func TestScan_WouldInsertUpdate_NewFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	for _, name := range []string{"a.pdf", "b.pdf"} {
+		createUniquePDF(t, tmpDir, name)
+	}
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	scanner := New(cfg, db, logger)
+
+	result, err := scanner.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+
+	if result.Stats.WouldInsert != 2 {
+		t.Errorf("WouldInsert = %d, want 2", result.Stats.WouldInsert)
+	}
+	if result.Stats.WouldUpdate != 0 {
+		t.Errorf("WouldUpdate = %d, want 0", result.Stats.WouldUpdate)
+	}
+	if result.Stats.SkippedOnMtime != 0 {
+		t.Errorf("SkippedOnMtime = %d, want 0", result.Stats.SkippedOnMtime)
+	}
+	if result.Stats.TotalFiles != 2 {
+		t.Errorf("TotalFiles = %d, want 2", result.Stats.TotalFiles)
+	}
+}
+
+func TestScan_WouldInsertUpdate_Idempotent(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	for _, name := range []string{"a.pdf", "b.pdf", "c.pdf"} {
+		createUniquePDF(t, tmpDir, name)
+	}
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	// First scan — all files are new
+	scanner1 := New(cfg, db, logger)
+	result1, err := scanner1.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() #1 error = %v", err)
+	}
+	if result1.Stats.WouldInsert != 3 {
+		t.Errorf("WouldInsert = %d, want 3", result1.Stats.WouldInsert)
+	}
+	if result1.Stats.WouldUpdate != 0 {
+		t.Errorf("WouldUpdate = %d, want 0", result1.Stats.WouldUpdate)
+	}
+	if result1.Stats.SkippedOnMtime != 0 {
+		t.Errorf("SkippedOnMtime = %d, want 0", result1.Stats.SkippedOnMtime)
+	}
+	if result1.Stats.TotalFiles != 3 {
+		t.Errorf("TotalFiles = %d, want 3", result1.Stats.TotalFiles)
+	}
+	// Total should equal WouldInsert + SkippedOnMtime (no updates)
+	if result1.Stats.TotalFiles != int(result1.Stats.WouldInsert)+result1.Stats.SkippedOnMtime {
+		t.Errorf("TotalFiles (%d) != WouldInsert (%d) + SkippedOnMtime (%d)",
+			result1.Stats.TotalFiles, result1.Stats.WouldInsert, result1.Stats.SkippedOnMtime)
+	}
+
+	// Second scan — all files unchanged, should be skipped
+	scanner2 := New(cfg, db, logger)
+	result2, err := scanner2.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() #2 error = %v", err)
+	}
+	if result2.Stats.WouldInsert != 0 {
+		t.Errorf("WouldInsert = %d, want 0 (already in DB)", result2.Stats.WouldInsert)
+	}
+	if result2.Stats.WouldUpdate != 0 {
+		t.Errorf("WouldUpdate = %d, want 0 (unchanged)", result2.Stats.WouldUpdate)
+	}
+	if result2.Stats.SkippedOnMtime != 3 {
+		t.Errorf("SkippedOnMtime = %d, want 3", result2.Stats.SkippedOnMtime)
+	}
+	if result2.Stats.TotalFiles != 3 {
+		t.Errorf("TotalFiles = %d, want 3", result2.Stats.TotalFiles)
+	}
+	if result2.Stats.TotalFiles != int(result2.Stats.WouldInsert)+int(result2.Stats.WouldUpdate)+result2.Stats.SkippedOnMtime {
+		t.Errorf("TotalFiles (%d) != WouldInsert (%d) + WouldUpdate (%d) + SkippedOnMtime (%d)",
+			result2.Stats.TotalFiles, result2.Stats.WouldInsert, result2.Stats.WouldUpdate, result2.Stats.SkippedOnMtime)
+	}
+}
+
+func TestScan_WouldInsertUpdate_ChangedFile(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	filePath := createUniquePDF(t, tmpDir, "doc.pdf")
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	// First scan — insert
+	scanner1 := New(cfg, db, logger)
+	result1, err := scanner1.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() #1 error = %v", err)
+	}
+	if result1.Stats.WouldInsert != 1 {
+		t.Errorf("WouldInsert = %d, want 1", result1.Stats.WouldInsert)
+	}
+
+	// Modify the file content (different SHA-256, different mtime)
+	time.Sleep(10 * time.Millisecond) // ensure mtime changes
+	newContent := []byte("modified content " + strings.Repeat("x", 1024*11))
+	if err := os.WriteFile(filePath, newContent, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	// Second scan — should detect as changed (WouldUpdate)
+	scanner2 := New(cfg, db, logger)
+	result2, err := scanner2.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() #2 error = %v", err)
+	}
+	if result2.Stats.WouldInsert != 0 {
+		t.Errorf("WouldInsert = %d, want 0", result2.Stats.WouldInsert)
+	}
+	if result2.Stats.WouldUpdate != 1 {
+		t.Errorf("WouldUpdate = %d, want 1 (file was modified)", result2.Stats.WouldUpdate)
+	}
+	if result2.Stats.SkippedOnMtime != 0 {
+		t.Errorf("SkippedOnMtime = %d, want 0", result2.Stats.SkippedOnMtime)
+	}
+	if result2.Stats.TotalFiles != 1 {
+		t.Errorf("TotalFiles = %d, want 1", result2.Stats.TotalFiles)
+	}
+}
+
+func TestScan_WouldInsertUpdate_PartialSkip(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Two files — one stable, one that will change
+	stablePath := createUniquePDF(t, tmpDir, "stable.pdf")
+	createUniquePDF(t, tmpDir, "volatile.pdf")
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := manifest.Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	ctx := context.Background()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	cfg := config.DefaultConfig()
+	cfg.Scan.MinFileSizeKB = config.IntPtr(1)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	// First scan — both inserted
+	scanner1 := New(cfg, db, logger)
+	result1, err := scanner1.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() #1 error = %v", err)
+	}
+	if result1.Stats.WouldInsert != 2 {
+		t.Errorf("WouldInsert = %d, want 2", result1.Stats.WouldInsert)
+	}
+
+	// Modify volatile.pdf
+	time.Sleep(10 * time.Millisecond)
+	newContent := []byte("modified " + strings.Repeat("x", 1024*11))
+	if err := os.WriteFile(stablePath, newContent, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	// Second scan — stable is updated, volatile is skipped
+	scanner2 := New(cfg, db, logger)
+	result2, err := scanner2.Scan(ctx, tmpDir, nil)
+	if err != nil {
+		t.Fatalf("Scan() #2 error = %v", err)
+	}
+	// Total should be 2 (both files found in dir)
+	if result2.Stats.TotalFiles != 2 {
+		t.Errorf("TotalFiles = %d, want 2", result2.Stats.TotalFiles)
+	}
+	// At least one file was skipped
+	if result2.Stats.SkippedOnMtime < 1 {
+		t.Errorf("SkippedOnMtime = %d, want >= 1", result2.Stats.SkippedOnMtime)
+	}
+	// At least one file was updated
+	if result2.Stats.WouldUpdate < 1 {
+		t.Errorf("WouldUpdate = %d, want >= 1", result2.Stats.WouldUpdate)
+	}
+	// Total must equal sum
+	sum := int(result2.Stats.WouldInsert) + int(result2.Stats.WouldUpdate) + result2.Stats.SkippedOnMtime
+	if result2.Stats.TotalFiles != sum {
+		t.Errorf("TotalFiles (%d) != WouldInsert (%d) + WouldUpdate (%d) + SkippedOnMtime (%d)",
+			result2.Stats.TotalFiles, result2.Stats.WouldInsert, result2.Stats.WouldUpdate, result2.Stats.SkippedOnMtime)
+	}
+}
