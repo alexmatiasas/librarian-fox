@@ -41,6 +41,7 @@ func newScanCmd() *cobra.Command {
 			extensions, _ := cmd.Flags().GetStringSlice("extension")
 			noDefaultExtensions, _ := cmd.Flags().GetBool("no-default-extensions")
 			excludeGlobs, _ := cmd.Flags().GetStringSlice("exclude-glob")
+			noDefaultGlobs, _ := cmd.Flags().GetBool("no-default-globs")
 			verbose, _ := cmd.Flags().GetBool("verbose")
 			format, _ := cmd.Flags().GetString("format")
 			noProgress, _ := cmd.Flags().GetBool("no-progress")
@@ -83,24 +84,20 @@ func newScanCmd() *cobra.Command {
 				cfg.General.DryRun = config.BoolPtr(dryRun)
 			}
 
-			if len(excludeDirs) > 0 {
-				if noDefaultExcludes {
-					cfg.Scan.ExcludeDirs = excludeDirs
-				} else {
-					cfg.Scan.ExcludeDirs = append(cfg.Scan.ExcludeDirs, excludeDirs...)
-				}
+			if noDefaultExcludes {
+				cfg.Scan.ExcludeDirs = excludeDirs
+			} else if len(excludeDirs) > 0 {
+				cfg.Scan.ExcludeDirs = append(cfg.Scan.ExcludeDirs, excludeDirs...)
 			}
 
 			if maxDepth > 0 {
 				cfg.Scan.MaxDepth = config.IntPtr(maxDepth)
 			}
 
-			if len(extensions) > 0 {
-				if noDefaultExtensions {
-					cfg.Scan.Extensions = extensions
-				} else {
-					cfg.Scan.Extensions = append(cfg.Scan.Extensions, extensions...)
-				}
+			if noDefaultExtensions {
+				cfg.Scan.Extensions = extensions
+			} else if len(extensions) > 0 {
+				cfg.Scan.Extensions = append(cfg.Scan.Extensions, extensions...)
 			}
 
 			if minSize > 0 {
@@ -118,7 +115,9 @@ func newScanCmd() *cobra.Command {
 				cfg.Scan.MaxFileSizeMB = config.IntPtr(maxMB)
 			}
 
-			if len(excludeGlobs) > 0 {
+			if noDefaultGlobs {
+				cfg.Scan.ExcludeGlobs = excludeGlobs
+			} else if len(excludeGlobs) > 0 {
 				cfg.Scan.ExcludeGlobs = append(cfg.Scan.ExcludeGlobs, excludeGlobs...)
 			}
 
@@ -207,8 +206,8 @@ func newScanCmd() *cobra.Command {
 					if jsonOut {
 						printJSONError("interrupted", result.Stats)
 					} else {
-						fmt.Printf("Scan interrupted after %d files, %d already in DB\n",
-							result.Stats.TotalFiles, result.Stats.TotalFiles)
+						fmt.Printf("Scan interrupted — processed %d files\n",
+							result.Stats.TotalFiles)
 					}
 					return nil
 				}
@@ -305,7 +304,6 @@ func newScanCmd() *cobra.Command {
 
 	cmd.Flags().String("root", "", "Root directory to scan (overrides config and positional arg)")
 	cmd.Flags().String("db", "", "Path to SQLite manifest database (overrides config)")
-	cmd.Flags().String("config", "", "Path to TOML config file")
 	cmd.Flags().String("log-level", "", "Log level (debug, info, warn, error) — defaults to config value")
 	cmd.Flags().Bool("json", false, "Output results as JSON")
 	cmd.Flags().Bool("dry-run", false, "Process files fully but skip DB writes — report only")
@@ -318,6 +316,7 @@ func newScanCmd() *cobra.Command {
 	cmd.Flags().String("min-size", "", "Minimum file size with suffix (e.g. 10k, 1m). Suffix: k=KB, m=MB")
 	cmd.Flags().String("max-size", "", "Maximum file size with suffix (e.g. 500m, 1g). Suffix: m=MB, g=GB")
 	cmd.Flags().StringSlice("exclude-glob", nil, "Exclude files matching glob patterns (repeatable, e.g. *.tmp *.bak)")
+	cmd.Flags().Bool("no-default-globs", false, "Start with empty exclude globs list instead of config defaults")
 	cmd.Flags().BoolP("verbose", "v", false, "List each processed file with details")
 	cmd.Flags().String("format", "", fmt.Sprintf("Output format: text or table (default: %q)", config.StrVal(config.DefaultConfig().General.OutputFormat)))
 	cmd.Flags().Bool("no-progress", false, "Suppress progress bar (still shows results)")
