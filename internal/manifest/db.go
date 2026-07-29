@@ -264,7 +264,7 @@ func (db *DB) FindByPath(ctx context.Context, sourcePath string) (*Document, err
 		       has_text_layer, needs_ocr, quality_flags, language,
 		       modified_at, created_at, updated_at
 		FROM documents WHERE source_path = ?
-		ORDER BY updated_at DESC LIMIT 1`, sourcePath).Scan(
+		ORDER BY rowid DESC LIMIT 1`, sourcePath).Scan(
 		&doc.ID, &doc.SourcePath, &doc.FileType, &doc.FileSize, &pageCount,
 		&doc.HasTextLayer, &doc.NeedsOCR, &qualityFlags, &language,
 		&modifiedAt, &doc.CreatedAt, &doc.UpdatedAt,
