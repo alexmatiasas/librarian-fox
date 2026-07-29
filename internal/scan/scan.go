@@ -460,10 +460,16 @@ func (s *Scanner) shouldExcludeDir(path, root string) bool {
 	if err != nil {
 		return false
 	}
+	if rel == "." {
+		return false
+	}
 
+	components := strings.Split(rel, string(os.PathSeparator))
 	for _, excluded := range s.config.Scan.ExcludeDirs {
-		if strings.Contains(rel, excluded) {
-			return true
+		for _, comp := range components {
+			if comp == excluded {
+				return true
+			}
 		}
 	}
 

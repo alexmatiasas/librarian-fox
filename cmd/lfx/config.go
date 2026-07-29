@@ -94,13 +94,15 @@ func newConfigShowCmd() *cobra.Command {
 			fmt.Printf("  metadata_sources = %v\n", cfg.Metadata.MetadataSources)
 
 			fmt.Printf("\n[ocr]\n")
-			fmt.Printf("  languages = %v\n", cfg.OCR.Languages)
-			fmt.Printf("  max_concurrent = %d\n", config.IntVal(cfg.OCR.MaxConcurrent))
-			if cfg.OCR.Quality != nil {
-				fmt.Printf("\n[ocr.quality]\n")
-				fmt.Printf("  blur_threshold = %.1f\n", config.FloatVal(cfg.OCR.Quality.BlurThreshold))
-				fmt.Printf("  skew_threshold = %.1f\n", config.FloatVal(cfg.OCR.Quality.SkewThreshold))
-				fmt.Printf("  contrast_min_spread = %.1f\n", config.FloatVal(cfg.OCR.Quality.ContrastMinSpread))
+			if cfg.OCR != nil {
+				fmt.Printf("  languages = %v\n", cfg.OCR.Languages)
+				fmt.Printf("  max_concurrent = %d\n", config.IntVal(cfg.OCR.MaxConcurrent))
+				if cfg.OCR.Quality != nil {
+					fmt.Printf("\n[ocr.quality]\n")
+					fmt.Printf("  blur_threshold = %.1f\n", config.FloatVal(cfg.OCR.Quality.BlurThreshold))
+					fmt.Printf("  skew_threshold = %.1f\n", config.FloatVal(cfg.OCR.Quality.SkewThreshold))
+					fmt.Printf("  contrast_min_spread = %.1f\n", config.FloatVal(cfg.OCR.Quality.ContrastMinSpread))
+				}
 			}
 
 			fmt.Printf("\n[apply]\n")
