@@ -59,6 +59,8 @@ func newConfigShowCmd() *cobra.Command {
 			fmt.Printf("  min_file_size_kb = %d\n", config.IntVal(cfg.Scan.MinFileSizeKB))
 			fmt.Printf("  max_file_size_mb = %d\n", config.IntVal(cfg.Scan.MaxFileSizeMB))
 			fmt.Printf("  extensions = %v\n", cfg.Scan.Extensions)
+			fmt.Printf("  exclude_dirs = %v\n", cfg.Scan.ExcludeDirs)
+			fmt.Printf("  exclude_globs = %v\n", cfg.Scan.ExcludeGlobs)
 
 			fmt.Printf("\n[llm]\n")
 			fmt.Printf("  provider = %q\n", config.StrVal(cfg.LLM.Provider))
@@ -110,7 +112,7 @@ func newConfigShowCmd() *cobra.Command {
 			fmt.Printf("  backup_max_count = %d\n", config.IntVal(cfg.Apply.BackupMaxCount))
 			fmt.Printf("  backup_max_age_days = %d\n", config.IntVal(cfg.Apply.BackupMaxAgeDays))
 
-			if cfg.Kavita.Enabled != nil && *cfg.Kavita.Enabled {
+			if config.BoolVal(cfg.Kavita.Enabled) {
 				fmt.Printf("\n[kavita]\n")
 				fmt.Printf("  enabled = true\n")
 				fmt.Printf("  port = %d\n", config.IntVal(cfg.Kavita.Port))
