@@ -651,6 +651,58 @@ func TestExpandTilde(t *testing.T) {
 	}
 }
 
+func TestDedupStrings(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{"nil", nil, nil},
+		{"empty", []string{}, []string{}},
+		{"single", []string{"a"}, []string{"a"}},
+		{"no dupes", []string{"a", "b", "c"}, []string{"a", "b", "c"}},
+		{"all dupes", []string{"a", "a", "a"}, []string{"a"}},
+		{"mixed", []string{"a", "b", "a", "c", "b"}, []string{"a", "b", "c"}},
+		{"order preserved", []string{"pdf", "epub", "pdf", "djvu"}, []string{"pdf", "epub", "djvu"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := dedupStrings(tt.in)
+			if len(got) != len(tt.want) {
+				t.Fatalf("len = %d, want %d", len(got), len(tt.want))
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("got[%d] = %q, want %q", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestNew_DeduplicatesSlices(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Scan.Extensions = []string{"pdf", "epub", "pdf", "djvu", "epub"}
+	cfg.Scan.ExcludeDirs = []string{"node_modules", ".git", "node_modules"}
+	cfg.Scan.ExcludeGlobs = []string{"*.tmp", "*.bak", "*.tmp"}
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	_ = New(cfg, nil, logger)
+
+	if len(cfg.Scan.Extensions) != 3 {
+		t.Errorf("Extensions len = %d, want 3", len(cfg.Scan.Extensions))
+	}
+	if cfg.Scan.Extensions[0] != "pdf" || cfg.Scan.Extensions[1] != "epub" || cfg.Scan.Extensions[2] != "djvu" {
+		t.Errorf("Extensions = %v, want [pdf epub djvu]", cfg.Scan.Extensions)
+	}
+	if len(cfg.Scan.ExcludeDirs) != 2 {
+		t.Errorf("ExcludeDirs len = %d, want 2", len(cfg.Scan.ExcludeDirs))
+	}
+	if len(cfg.Scan.ExcludeGlobs) != 2 {
+		t.Errorf("ExcludeGlobs len = %d, want 2", len(cfg.Scan.ExcludeGlobs))
+	}
+}
+
 func TestScan_DryRun(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test.db")
