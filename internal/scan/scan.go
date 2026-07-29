@@ -81,11 +81,34 @@ type fileEntry struct {
 
 // New creates a Scanner with the given configuration.
 func New(cfg *config.Config, db *manifest.DB, logger *slog.Logger) *Scanner {
+	// Deduplicate all string slices in the scan config to prevent duplicates
+	// from CLI flags or TOML files.
+	if cfg.Scan != nil {
+		cfg.Scan.Extensions = dedupStrings(cfg.Scan.Extensions)
+		cfg.Scan.ExcludeDirs = dedupStrings(cfg.Scan.ExcludeDirs)
+		cfg.Scan.ExcludeGlobs = dedupStrings(cfg.Scan.ExcludeGlobs)
+	}
 	return &Scanner{
 		config:   cfg,
 		manifest: db,
 		logger:   logger,
 	}
+}
+
+// dedupStrings removes duplicate strings from a slice while preserving order.
+func dedupStrings(s []string) []string {
+	if len(s) < 2 {
+		return s
+	}
+	seen := make(map[string]struct{}, len(s))
+	result := make([]string, 0, len(s))
+	for _, v := range s {
+		if _, ok := seen[v]; !ok {
+			seen[v] = struct{}{}
+			result = append(result, v)
+		}
+	}
+	return result
 }
 
 // Scan traverses the root directory and populates the manifest.
