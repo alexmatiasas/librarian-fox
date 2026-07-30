@@ -1,14 +1,22 @@
 pre-commit:
+  parallel: true
   commands:
-    lint:
-      run: golangci-lint run
+    golangci-lint:
+      run: golangci-lint run ./...
+      glob: '*.go'
       stage_fixed: true
-    format:
-      run: gofumpt -w -extra .
+    go-fmt:
+      glob: '*.go'
+      run: gofumpt -w -extra {staged_files}
       stage_fixed: true
     go-mod-tidy:
       run: go mod tidy
       stage_fixed: true
+    python-hooks:
+      glob: "**/*.py"
+      run: prek run --directory lfx-rag --config lfx-rag/prek.toml --files {staged_files}
+    repo-hygiene:
+      run: prek run --config prek.toml --files {staged_files}
 
 commit-msg:
   commands:
@@ -22,9 +30,13 @@ commit-msg:
         fi
 
 pre-push:
+  parallel: true
   commands:
-    test:
+    go-test:
       run: go test -race -count=1 ./...
+    python-test:
+      root: "lfx-rag/"
+      run: uv run pytest -v
 
 post-checkout:
   commands:

@@ -1,0 +1,24 @@
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace", args = ["--markdown-linebreak-ext=md"] },
+  { id = "end-of-file-fixer" },
+  { id = "check-yaml" },
+  { id = "check-toml" },
+  { id = "check-added-large-files", args = ["--maxkb=500"], exclude = "^lfx-rag/uv\\.lock$" },
+  { id = "check-merge-conflict" },
+]
+
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v6.0.0"
+hooks = [
+  { id = "check-json" },
+  { id = "no-commit-to-branch", args = ["--branch", "main", "--branch", "develop"] },
+  { id = "pretty-format-json", args = ["--autofix"], exclude = "^configs/lfx\\.schema\\.json$" },
+]
+
+[[repos]]
+repo = "https://github.com/gitleaks/gitleaks"
+rev = "v8.30.1"
+hooks = [ { id = "gitleaks" } ]
