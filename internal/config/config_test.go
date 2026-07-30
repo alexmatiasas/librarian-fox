@@ -814,7 +814,7 @@ func TestLoadFrom_MalformedTOML(t *testing.T) {
 
 	content := `
 [general]
-root = 
+root =
 log_level = invalid
 `
 	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
