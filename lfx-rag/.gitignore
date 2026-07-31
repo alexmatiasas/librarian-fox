@@ -209,6 +209,9 @@ tempCodeRunnerFile.py
 # PyPI configuration file
 .pypirc
 
+# User-specific config overrides
+config/config.yml
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

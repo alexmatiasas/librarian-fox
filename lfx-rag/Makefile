@@ -1,4 +1,4 @@
-.PHONY: sync lint format typecheck test check clean
+.PHONY: sync lint format typecheck test check clean generate-schema
 
 sync:
 	uv sync
@@ -9,11 +9,17 @@ lint:
 format:
 	uv run ruff format src/ tests/ --check
 
+format-fix:
+	uv run ruff format src/ tests/
+
 typecheck:
 	uv run pyright src/
 
 test:
 	uv run pytest -v
+
+generate-schema:
+	uv run python scripts/generate_config_schema.py
 
 check: lint format typecheck test
 
