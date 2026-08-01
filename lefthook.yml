@@ -14,7 +14,9 @@ pre-commit:
       stage_fixed: true
     python-hooks:
       glob: "**/*.py"
-      run: prek run --directory lfx-rag --config lfx-rag/prek.toml --files {staged_files}
+      exclude:
+        - 'lfx-rag/notebooks/**'
+      run: prek run 'lfx-rag/' --files {staged_files}
     repo-hygiene:
       run: prek run --config prek.toml --files {staged_files}
 

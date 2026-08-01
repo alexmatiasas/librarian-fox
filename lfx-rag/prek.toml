@@ -5,10 +5,10 @@ hooks = [
     { id = "ruff-check", types_or = [
         "python",
         "pyi",
-    ], args = [
+    ], exclude = { glob = "**/notebooks/**" }, args = [
         "--fix",
     ] },
-    { id = "ruff-format", types_or = [
+    { id = "ruff-format", exclude = { glob = "**/notebooks/**" }, types_or = [
         "python",
         "pyi",
     ] },
