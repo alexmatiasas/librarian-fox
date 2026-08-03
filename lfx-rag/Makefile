@@ -1,7 +1,14 @@
-.PHONY: sync lint format typecheck test check clean generate-schema
+.PHONY: sync lint format typecheck test check seed generate-schema clean
 
 sync:
 	uv sync
+
+seed:
+	uv run python scripts/generate_testdata.py
+	uv run python scripts/load_testdata.py
+
+seed-large:
+	uv run python scripts/generate_testdata.py --large 800 --large-out /tmp/lfx_rag_large.pdf
 
 lint:
 	uv run ruff check src/ tests/

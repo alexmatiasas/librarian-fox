@@ -44,6 +44,11 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "ARG", "RUF"]
 
+[tool.ruff.lint.per-file-ignores]
+# marimo notebooks: cross-cell references, capitalized cell params and bare
+# display expressions are idiomatic and not real lint issues.
+"notebooks/*" = ["F821", "N803", "B018"]
+
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"

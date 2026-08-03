@@ -5,7 +5,7 @@ hooks = [
   { id = "end-of-file-fixer" },
   { id = "check-yaml" },
   { id = "check-toml" },
-  { id = "check-added-large-files", args = ["--maxkb=500"], exclude = "^lfx-rag/uv\\.lock$" },
+  { id = "check-added-large-files", args = ["--maxkb=500"], exclude = "^lfx-rag/uv\\.lock$|^testdata/" },
   { id = "check-merge-conflict" },
 ]
 
