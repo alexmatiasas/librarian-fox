@@ -1,20 +1,20 @@
 import marimo
 
-__generated_with = "0.23.15"
-app = marimo.App(width="medium")
+__generated_with = "0.23.16"
+app = marimo.App(width="full")
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # lfx-rag — EDA del pipeline RAG
+    # lfx-rag — EDA of the RAG pipeline
 
-    Flujo: **config → loader → chunker**, inspeccionando el manifest de lfx.
+    Workflow: **config → loader → chunker**, inspeccionando el manifest de lfx.
 
     - **0** — Toggle `fixtures/real` + conexión SQLite read-only
     - **1** — Manifest: tablas + row counts (shadow FTS excluido)
     - **2** — Manifest: `file_type` en la DB vs indexables por el loader
-    - **3** — Manifest: JOIN `documents ⋈ classifications ⋈ organization`
+    - **3** — Manifest: JOIN `documents => classifications => organization`
     - **4** — Manifest: diccionarios `subject_groups` + `tags`
     - **5** — Manifest: ficha de la tesis (documento grande real)
     - **6** — Config: `load_config()` recortado
@@ -57,7 +57,7 @@ def _():
 def _(mo):
     use_fixtures = mo.ui.switch(
         value=True,
-        label="Usar `tests/fixtures/manifest.db` (testdata sintético) en vez del manifest real",
+        label="Use `tests/fixtures/manifest.db` (syntetic testdata) instead of the real database",
     )
     use_fixtures
     return (use_fixtures,)
@@ -65,6 +65,7 @@ def _(mo):
 
 @app.cell
 def _(Path, use_fixtures):
+    # A conditional database path, switch the previous toggle to change the database used for the testing
     db_path = (
         Path("tests/fixtures/manifest.db")
         if use_fixtures.value
@@ -80,7 +81,7 @@ def _(Path, sqlite3):
         conn.row_factory = sqlite3.Row
         return conn
 
-    return
+    return (make_ro_conn,)
 
 
 @app.cell(hide_code=True)
@@ -92,7 +93,7 @@ def _(mo):
 
 
 @app.cell
-def _(db_path, mo):
+def _(db_path, make_ro_conn, mo):
     def _eda_tables():
         if not db_path.exists():
             return mo.md(f"⚠️ `{db_path}` no existe — corre `make seed` o activa `fixtures`.")
@@ -140,7 +141,7 @@ def _(mo):
 
 
 @app.cell
-def _(SUPPORTED_EXTENSIONS, db_path, mo):
+def _(SUPPORTED_EXTENSIONS, db_path, make_ro_conn, mo):
     def _eda_filetypes():
         if not db_path.exists():
             return mo.md(f"⚠️ `{db_path}` no existe.")
@@ -181,7 +182,7 @@ def _(mo):
 
 
 @app.cell
-def _(Path, db_path, mo):
+def _(Path, db_path, make_ro_conn, mo):
     def _eda_joins():
         if not db_path.exists():
             return mo.md(f"⚠️ `{db_path}` no existe.")
@@ -223,7 +224,7 @@ def _(Path, db_path, mo):
                 }
                 for r in rows
             ],
-            label="Documentos con clasificación aceptada y ubicación organizada",
+            label="Documents with accepted classification and organized location",
         )
 
     _eda_joins()
@@ -239,7 +240,7 @@ def _(mo):
 
 
 @app.cell
-def _(db_path, mo):
+def _(db_path, make_ro_conn, mo):
     def _eda_dicts():
         if not db_path.exists():
             return mo.md(f"⚠️ `{db_path}` no existe.")
@@ -274,7 +275,7 @@ def _(mo):
 
 
 @app.cell
-def _(db_path, mo):
+def _(db_path, make_ro_conn, mo):
     def _eda_tesis():
         if not db_path.exists():
             return mo.md(f"⚠️ `{db_path}` no existe.")
@@ -541,6 +542,11 @@ def _(Path, chunk_sliding_window, mo, run_scale):
         )
 
     _eda_scale()
+    return
+
+
+@app.cell
+def _():
     return
 
 
