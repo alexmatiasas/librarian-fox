@@ -4,20 +4,20 @@ version = "0.1.0"
 description = "RAG on personal library made with lfx"
 requires-python = ">=3.12"
 dependencies = [
-    "ebooklib>=0.20",
-    "fastapi>=0.141.1",
-    "httpx>=0.28.1",
-    "lancedb>=0.36.0",
-    "mlflow>=3.14.0",
-    "pydantic>=2.13.4",
-    "pydantic-settings>=2.14.2",
-    "pymupdf>=1.25.0",
-    "python-dotenv>=1.0.0",
-    "python-multipart>=0.0.32",
-    "pyyaml>=6.0.3",
-    "sentence-transformers>=5.6.1",
-    "typer>=0.27.0",
-    "uvicorn>=0.52.0",
+  "ebooklib>=0.20",
+  "fastapi>=0.141.1",
+  "httpx>=0.28.1",
+  "lancedb>=0.36.0",
+  "mlflow>=3.14.0",
+  "pydantic>=2.13.4",
+  "pydantic-settings>=2.14.2",
+  "pymupdf>=1.25.0",
+  "python-dotenv>=1.0.0",
+  "python-multipart>=0.0.32",
+  "pyyaml>=6.0.3",
+  "sentence-transformers>=5.6.1",
+  "typer>=0.27.0",
+  "uvicorn>=0.52.0",
 ]
 
 [project.scripts]
@@ -29,12 +29,12 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "marimo[recommended]>=0.23.15",
-    "pyright>=1.1.411",
-    "pytest>=9.1.1",
-    "pytest-asyncio>=1.4.0",
-    "pytest-cov>=7.1.0",
-    "ruff>=0.16.0",
+  "marimo[recommended]>=0.23.15",
+  "pyright>=1.1.411",
+  "pytest>=9.1.1",
+  "pytest-asyncio>=1.4.0",
+  "pytest-cov>=7.1.0",
+  "ruff>=0.16.0",
 ]
 
 [tool.ruff]
@@ -63,3 +63,13 @@ testpaths = ["tests"]
 
 [tool.uv]
 package = true
+
+[tool.harlequin]
+default_profile = "migration-lfx-rag"
+
+[tool.harlequin.profiles.migration-lfx-rag]
+adapter = "sqlite"
+theme = "tokyo-night"
+viewer_max_rows = 100000
+keymap_name = ["vscode"]
+conn_str = ["tests/fixtures/manifest.db"]
