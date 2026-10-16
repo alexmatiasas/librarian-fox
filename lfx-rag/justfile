@@ -1,118 +1,33 @@
-# justfile — VGC Team Recommender
-# This enables env variables from a .env file
-set dotenv-filename := ".env.example"
-set dotenv-load
+# justfile for lfx-rag (Python) — uv-based
 
-# Stablish local env variables to handle the better
-# the rest of the commands
-export MY_ENV_VAR := 0
+default: test
 
-# Show available commands
-default:
-    @just --list
-
-show_mlflow_uri:
-  @echo "This is the URI: $MLFLOW_TRACKING_URI"
-
-show_my_env_var:
-  @echo "This is my env var: $MY_ENV_VAR"
-
-# ── Setup ─────────────────────────────────────────────────────────────
-
-# Install all dependencies (Python + Go)
 install:
-    uv sync
-    lefthook install
-    @echo "Setup complete. Run `just` to see available commands."
+    uv sync --all-extras --dev
 
-# ── Code Quality ──────────────────────────────────────────────────────
+lint:
+    uv run ruff check .
 
-# Run all linters
-lint: lint-python lint-go
+format:
+    uv run ruff format .
 
-# Lint Python code
-lint-python:
+typecheck:
+    uv run pyright src
+
+test:
+    uv run pytest -q
+
+cov:
+    uv run pytest --cov=src --cov-report=term-missing -q
+
+run-cli:
+    uv run lfx-rag --help
+
+serve-api:
+    uv run uvicorn lfx_rag.api:app --reload
+
+check:
     uv run ruff check .
     uv run ruff format --check .
-
-# Lint Go code
-lint-go:
-    cd api && golangci-lint run
-
-# Format all code
-fmt: fmt-python fmt-go
-
-# Format Python code
-fmt-python:
-    uv run ruff format .
-    uv run ruff check --fix .
-
-# Format Go code
-fmt-go:
-    cd api && gofmt -w -s .
-    cd api && goimports -w .
-
-# Type check Python code
-typecheck:
-    uv run basedpyright
-
-# ── Testing ───────────────────────────────────────────────────────────
-
-# Run all tests
-test: test-python test-go
-
-# Run Python tests
-test-python:
-    uv run pytest
-
-# Run Python tests with coverage
-test-cov:
-    uv run pytest --cov=src --cov-report=term-missing
-
-# Run Go tests
-test-go:
-    cd api && go test ./...
-
-# ── Docker ────────────────────────────────────────────────────────────
-
-# Start Postgres and Adminer
-docker-up:
-    docker compose up -d
-    @echo "Postgres: localhost:5432"
-    @echo "Adminer:  http://localhost:8081"
-
-# Stop all containers
-docker-down:
-    docker compose down
-
-# Stop and remove volumes (DELETES DATA)
-docker-destroy:
-    docker compose down -v
-
-# Show container logs
-docker-logs:
-    docker compose logs -f
-
-# ── Database ──────────────────────────────────────────────────────────
-
-# Apply all pending migrations
-migrate-up:
-    migrate -path db/migrations -database "postgres://${POSTGRES_USER:-vgc}:${POSTGRES_PASSWORD:-vgc_dev_password}@localhost:5432/${POSTGRES_DB:-vgc}?sslmode=disable" up
-
-# Rollback last migration
-migrate-down:
-    migrate -path db/migrations -database "postgres://${POSTGRES_USER:-vgc}:${POSTGRES_PASSWORD:-vgc_dev_password}@localhost:5432/${POSTGRES_DB:-vgc}?sslmode=disable" down 1
-
-# Create a new migration (usage: just migrate-create add_users_table)
-migrate-create name:
-    migrate create -ext sql -dir db/migrations -seq {{ name }}
-
-# ── Development ───────────────────────────────────────────────────────
-
-# Run the pipeline (dev mode)
-run-pipeline:
-    cd pipeline && dagster dev
-
-# Run the API (dev mode)
-run-api:
-    cd api && go run cmd/server/main.go
+    uv run pyright src
+    uv run pytest -q
