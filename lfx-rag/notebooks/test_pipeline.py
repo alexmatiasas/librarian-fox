@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.16"
+__generated_with = "0.25.2"
 app = marimo.App(width="full")
 
 
@@ -542,11 +542,6 @@ def _(Path, chunk_sliding_window, mo, run_scale):
         )
 
     _eda_scale()
-    return
-
-
-@app.cell
-def _():
     return
 
 
