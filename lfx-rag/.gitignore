@@ -219,3 +219,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# lfx-rag local config (machine-specific paths)
+config.yaml
+# local LanceDB dev store
+data/

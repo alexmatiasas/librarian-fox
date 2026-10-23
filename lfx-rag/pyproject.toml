@@ -40,14 +40,11 @@ dev = [
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+# marimo notebooks are linted/formatted by marimo, not ruff
+exclude = ["notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "ARG", "RUF"]
-
-[tool.ruff.lint.per-file-ignores]
-# marimo notebooks: cross-cell references, capitalized cell params and bare
-# display expressions are idiomatic and not real lint issues.
-"notebooks/*" = ["F821", "N803", "B018"]
 
 [tool.pyright]
 pythonVersion = "3.12"
@@ -55,7 +52,7 @@ typeCheckingMode = "strict"
 reportMissingTypeStubs = false
 reportUnknownMemberType = false
 reportUnknownVariableType = false
-include = ["src"]
+include = ["src", "tests", "scripts"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

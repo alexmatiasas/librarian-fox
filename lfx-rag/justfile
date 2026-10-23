@@ -1,33 +1,69 @@
+# ref: https://just.systems/man/en/
+# ref: https://cheatography.com/linux-china/cheat-sheets/justfile/
 # justfile for lfx-rag (Python) — uv-based
 
-default: test
+# All real Python. Notebooks are handled by marimo, not ruff/pyright.
+PY_DIRS := "src/ tests/ scripts/"
 
+default:
+    @just -l
+
+# Installs all dependencies, including for dev.
+[group("dependencies")]
 install:
-    uv sync --all-extras --dev
+    @uv sync --all-extras --dev
 
-lint:
-    uv run ruff check .
+# Runs ruff check for file(s) or dir(s) selected, default=src/ tests/ scripts/
+[group("code checks")]
+lint +FILES=PY_DIRS:
+    @uv run ruff check {{ FILES }}
 
-format:
-    uv run ruff format .
+# Runs ruff format (writes) for file(s) or dir(s) selected, default=src/ tests/ scripts/
+[group("code checks")]
+format +FILES=PY_DIRS:
+    @uv run ruff format {{ FILES }}
 
-typecheck:
-    uv run pyright src
+# Auto-fix lint + format (writes)
+[group("code checks")]
+fix:
+    @uv run ruff check --fix {{ PY_DIRS }}
+    @uv run ruff format {{ PY_DIRS }}
 
-test:
-    uv run pytest -q
+# Runs typecheck for file(s) or dir(s) selected, default=src/ tests/ scripts/
+[group("code checks")]
+typecheck +FILES=PY_DIRS:
+    @uv run pyright {{ FILES }}
 
-cov:
-    uv run pytest --cov=src --cov-report=term-missing -q
+# Tests over the file(s) or dir(s) selected (quiet output), default="./tests/"
+[group("code checks")]
+test +FILES="tests/":
+    @uv run pytest -q {{ FILES }}
 
-run-cli:
-    uv run lfx-rag --help
+# Tests over the file(s) or dir(s) selected (coverage report), default="./tests/"
+[group("code checks")]
+cov +FILES="tests/":
+    @uv run pytest --cov=src --cov-report=term-missing -q {{ FILES }}
 
-serve-api:
-    uv run uvicorn lfx_rag.api:app --reload
-
+# Read-only gate: lint, format check, types, tests, notebooks
+[group("code checks")]
 check:
-    uv run ruff check .
-    uv run ruff format --check .
-    uv run pyright src
-    uv run pytest -q
+    @uv run ruff check {{ PY_DIRS }}
+    @uv run ruff format --check {{ PY_DIRS }}
+    @uv run pyright
+    @uv run pytest -q
+    @uv run marimo check notebooks/
+
+# run cli app for lfx-rag
+[group("build-app")]
+run-cli:
+    @uv run lfx-rag --help
+
+# run a marimo server of the FILE described, no token is enable
+[group("marimo")]
+edit-marimo FILE:
+    @uv run marimo edit --no-token {{ FILE }}
+
+# lint files in the marimo DIRectory supplied, default "notebooks/"
+[group("marimo")]
+lint-marimo DIR="notebooks/":
+    @uv run marimo check --fix {{ DIR }}
