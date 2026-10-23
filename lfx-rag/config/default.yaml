@@ -8,14 +8,14 @@
 # === Document Sources ===
 document_source:
   # Path to lfx manifest SQLite database
-  manifest_path: "~/.local/share/lfx/manifest.db"
+  manifest_path: ~/.local/share/lfx/manifest.db
   # Library directory (used as fallback if manifest is unavailable)
-  library_dir: "~/Biblioteca/"
+  library_dir: ~/Biblioteca
 
 # === File Formats ===
 formats:
-  pdf: true   # Process PDF files
-  epub: true  # Process EPUB files
+  pdf: true # Process PDF files
+  epub: true # Process EPUB files
 
 # === Text Chunking ===
 chunking:
@@ -23,25 +23,25 @@ chunking:
   default_strategy: sliding_window
 
   sliding_window:
-    chunk_size: 512      # Tokens per chunk
-    overlap: 128         # Overlap between consecutive chunks
-    unit: tokens         # tokens | chars
+    chunk_size: 512 # Tokens per chunk
+    overlap: 128 # Overlap between consecutive chunks
+    unit: tokens # tokens | chars
 
   semantic:
-    enabled: false         # Enable semantic chunking (experimental)
-    threshold: 0.85        # Similarity threshold for topic splits
-    min_chunk_size: 100    # Minimum chunk size in tokens
+    enabled: false # Enable semantic chunking (experimental)
+    threshold: 0.85 # Similarity threshold for topic splits
+    min_chunk_size: 100 # Minimum chunk size in tokens
 
 # === Embeddings ===
 embeddings:
   local:
     model: "intfloat/multilingual-e5-small"
-    dimension: 384          # Vector dimension for this model
-    device: auto            # auto | cpu | mps | cuda
-    batch_size: 32          # Batch size for embedding generation
+    dimension: 384 # Vector dimension for this model
+    device: auto # auto | cpu | mps | cuda
+    batch_size: 32 # Batch size for embedding generation
   cloud:
-    enabled: false          # Enable cloud embeddings via API
-    provider: google        # Cloud embeddings provider
+    enabled: false # Enable cloud embeddings via API
+    provider: google # Cloud embeddings provider
     model: "text-embedding-004"
 
 # === Vector Store (LanceDB) ===
@@ -49,18 +49,18 @@ vector_store:
   uri: "~/.local/share/lfx-rag/lancedb"
   table: documents
   create_if_missing: true
-  search_limit: 20          # Default top-k for vector search
-  search_metric: cosine     # cosine | l2 | dot
+  search_limit: 20 # Default top-k for vector search
+  search_metric: cosine # cosine | l2 | dot
 
 # === Reranker ===
 reranker:
-  enabled: false            # Enable cross-encoder reranker
+  enabled: false # Enable cross-encoder reranker
   model: "bge-reranker-v2-m3"
-  top_k: 5                  # Results after reranking
+  top_k: 5 # Results after reranking
 
 # === Generation (RAG responses) ===
 generation:
-  default: local            # local | cloud
+  default: local # local | cloud
   local:
     provider: ollama
     model: "qwen3:8b"
@@ -78,7 +78,7 @@ generation:
 monitoring:
   mlflow:
     enabled: false
-    tracking_uri: null       # null = local mlruns/ directory
+    tracking_uri: null # null = local mlruns/ directory
     experiment_name: "lfx-rag"
 
 # === State Tracking ===
@@ -87,5 +87,5 @@ state:
 
 # === Pipeline Execution ===
 pipeline:
-  batch_size: 10             # Documents per batch
-  max_concurrent: 4          # Max parallel workers
+  batch_size: 10 # Documents per batch
+  max_concurrent: 4 # Max parallel workers
