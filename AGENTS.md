@@ -60,7 +60,7 @@ SQLite manifest at path from config (`[general].manifest_path`, defaults to `~/.
 
 - CLI in `cmd/lfx/` (Cobra). Business logic in `internal/` — no `fmt.Print*`, no `os.Exit` there (interface-agnostic).
 - External tools via `os/exec`: Calibre (`ebook-meta`, `fetch-ebook-metadata`, `ebook-convert`, `calibredb`), `ocrmypdf`, `pdftotext`, `pdfinfo`, `ghostscript`, `tesseract`, `djvused`/`djvutxt`/`ddjvu`. Currently only `pdfinfo`, `pdftotext`, `djvused`, `djvutxt` are wired (in `internal/scan`); Calibre/OCR wrappers are planned.
-- Scan pipeline: `internal/scan` walks tree, filters by extensions/size/excludes/depth, skips symlinks by default, computes SHA-256, extracts page count + text-layer flag (PDF via `pdfinfo`/`pdftotext`, DJVU via `djvused`/`djvutxt`), upserts to manifest. **No language detection yet.** Dry-run supported.
+- Scan pipeline: `internal/scan` walks tree, filters by extensions/size/excludes/depth, skips symlinks by default, computes SHA-256, extracts page count + text-layer flag (PDF via `pdfinfo`/`pdftotext`, DJVU via `djvused`/`djvutxt`), upserts to manifest. Language is a **filename keyword heuristic** (`detectLanguage`, defaults `en`) — real detection pending. Dry-run supported and **defaults to true** (`[general].dry_run`); persist with `--dry-run=false`.
 - Concurrency: worker pools per phase with configurable limits (LLM/OCR). Context cancellation respected.
 - Two components separated: lfx (Go root) and lfx-rag (Python subdir), each with independent justfile and tooling (uv for Python).
 

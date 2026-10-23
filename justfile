@@ -7,7 +7,7 @@ LDFLAGS := "-s -w -X main.version=" + VERSION + " -X main.commit=" + COMMIT
 default: build
 
 build: schema
-    CGO_ENABLED=1 go build -tags "sqlite_fts5" -ldflags {{LDFLAGS}} -o lfx ./cmd/lfx
+    CGO_ENABLED=1 go build -tags "sqlite_fts5" -ldflags "{{ LDFLAGS }}" -o lfx ./cmd/lfx
 
 test:
     CGO_ENABLED=1 go test -tags "sqlite_fts5" -race -count=1 ./...
