@@ -1,6 +1,14 @@
 # AGENTS.md — librarian_fox (lfx)
 
-Repo: Go CLI that scans reading documents (PDF/DjVu/DOCX/DOC/EPUB) into a SQLite manifest. Only `scan`, `config`, `version` are implemented; `classify/restore/apply/serve` are planned.
+Repo: Go CLI that scans reading documents into a SQLite manifest. Default extensions: pdf, djvu, docx, doc (EPUB not scanned in v1). Only `scan`, `config`, `version` are implemented; `classify/restore/apply/serve` are planned.
+
+## Current state
+
+- Implemented: `internal/config`, `internal/manifest`, `internal/scan`, `cmd/lfx` (scan/config/version).
+- Not started: `internal/llm`, `internal/metadata`, `internal/pdf`, `internal/djvu`, `internal/quality`, `internal/dedup`, classify/restore/apply/serve commands.
+- Phase 0 (OCR validation) done — see `docs/tasks/000-fase0-ocr-validation.md`.
+- Test dataset: `~/Documents/library` (436 files, 5.1GB, already organized manually).
+- Phase/task tracking lives in `docs/tasks/` — read `docs/tasks/README.md` before starting work.
 
 ## Build & test (exact commands)
 
@@ -51,8 +59,8 @@ SQLite manifest at path from config (`[general].manifest_path`, defaults to `~/.
 ## Architecture notes (high-signal)
 
 - CLI in `cmd/lfx/` (Cobra). Business logic in `internal/` — no `fmt.Print*`, no `os.Exit` there (interface-agnostic).
-- External tools used via `os/exec`: Calibre (`ebook-meta`, `fetch-ebook-metadata`, `ebook-convert`, `calibredb`), `ocrmypdf`, `pdftotext`, `ghostscript`, `tesseract`, `djvutxt`/`ddjvu` (see `internal/metadata`, `internal/pdf`, `internal/djvu`, `internal/scan`).
-- Scan pipeline: `internal/scan` walks tree, filters by extensions/size/excludes/depth, skips symlinks by default, computes SHA-256, extracts text/pages where possible, detects language, upserts to manifest. Dry-run supported.
+- External tools via `os/exec`: Calibre (`ebook-meta`, `fetch-ebook-metadata`, `ebook-convert`, `calibredb`), `ocrmypdf`, `pdftotext`, `pdfinfo`, `ghostscript`, `tesseract`, `djvused`/`djvutxt`/`ddjvu`. Currently only `pdfinfo`, `pdftotext`, `djvused`, `djvutxt` are wired (in `internal/scan`); Calibre/OCR wrappers are planned.
+- Scan pipeline: `internal/scan` walks tree, filters by extensions/size/excludes/depth, skips symlinks by default, computes SHA-256, extracts page count + text-layer flag (PDF via `pdfinfo`/`pdftotext`, DJVU via `djvused`/`djvutxt`), upserts to manifest. **No language detection yet.** Dry-run supported.
 - Concurrency: worker pools per phase with configurable limits (LLM/OCR). Context cancellation respected.
 - Two components separated: lfx (Go root) and lfx-rag (Python subdir), each with independent justfile and tooling (uv for Python).
 
