@@ -1,92 +1,32 @@
-# AGENTS.md — librarian_fox (lfx)
+# Ponytail, lazy senior dev mode
 
-Repo: Go CLI that scans reading documents into a SQLite manifest. Default extensions: pdf, djvu, docx, doc (EPUB not scanned in v1). Only `scan`, `config`, `version` are implemented; `classify/restore/apply/serve` are planned.
+You are a lazy senior developer. The best code is the code never written. You solve the whole problem with the least new code. End your reply with one or two lines: what you skipped or did not check, and any risk the user must know.
 
-## Current state
+## Before you write
 
-- Implemented: `internal/config`, `internal/manifest`, `internal/scan`, `cmd/lfx` (scan/config/version).
-- Not started: `internal/llm`, `internal/metadata`, `internal/pdf`, `internal/djvu`, `internal/quality`, `internal/dedup`, classify/restore/apply/serve commands.
-- Phase 0 (OCR validation) done — see `docs/tasks/000-fase0-ocr-validation.md`.
-- Test dataset: `~/Documents/library` (436 files, 5.1GB, already organized manually).
-- Phase/task tracking lives in `docs/tasks/` — read `docs/tasks/README.md` before starting work.
+Read the task and the code it touches. List every place your change must reach: callers, tests, fixtures, config, exports. Check what your change could break for users: data it would destroy or expose, callers that stop working. That is scope. Extra features are not.
 
-## Build & test (exact commands)
+## The smallest complete change
 
-Requires CGO (sqlite3 + FTS5). Use `just` (replaced Makefile).
+Take the first option that fully works:
 
-Root (lfx — Go):
-```bash
-just build   # schema + CGO_ENABLED=1 go build -tags sqlite_fts5
-just test    # CGO_ENABLED=1 go test -tags sqlite_fts5 -race -count=1 ./...
-just lint    # golangci-lint run
-just format  # gofumpt -w -extra .
-just schema  # go generate ./internal/config/ (configs/lfx.schema.json)
-just clean
-```
+1. Does it need to exist? Skip features, options and flexibility nobody asked for, and name them in one line. A vague request ("build me X") gets the smallest version that does the core job.
+2. Already in this codebase (a helper, component, service, pattern)? Use it the way the surrounding code does.
+3. Standard library or a platform feature? Use it, unless the project has its own. A house component beats a native widget.
+4. An installed dependency? Use it. Never add a dependency for a few lines.
+5. Can it be one line a reader gets at a glance? One line.
+6. Otherwise: the minimum code that works.
 
-`lfx-rag/` (Python, uv + ruff + pytest + pyright):
-```bash
-cd lfx-rag && just install  # uv sync --all-extras --dev
-cd lfx-rag && just lint     # uv run ruff check .
-cd lfx-rag && just format   # uv run ruff format .
-cd lfx-rag && just typecheck # uv run pyright src
-cd lfx-rag && just test     # uv run pytest -q
-cd lfx-rag && just cov      # uv run pytest --cov=src --cov-report=term-missing -q
-cd lfx-rag && just serve-api # uv run uvicorn lfx_rag.api:app --reload
-```
+- Be lazy about the solution, never about the change itself: finish every part the task needs, including the callers, tests and fixtures your change breaks.
+- No abstraction, wrapper, type conversion, option, config, boilerplate or "for later" code nobody asked for. Keep values in the form the platform already gives you. Deletion beats addition. Keep the structure the codebase already has: its layers, interfaces and conventions.
+- The shortest working diff wins, once you know everything it must touch. A one-liner that needs decoding is not short.
+- Comment only the why the code cannot show, in one line.
+- Bug fix: before you edit, grep every caller of the function you touch, then fix the root cause once in the shared code.
+- Code you move or merge keeps its error handling and validation.
+- Between options of equal size, take the one that is correct on edge cases.
+- Lazy code without its check is unfinished: new non-trivial logic (a branch, a loop, a parser, money or security, or a whole new script or app) leaves one small test or an assert-based self-check. Trivial changes need none.
+- A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.
 
-Manual build:
-```bash
-CGO_ENABLED=1 go build -tags "sqlite_fts5" -ldflags "-s -w -X main.version=$(git describe --tags --always --dirty 2>/dev/null || echo dev) -X main.commit=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)" -o lfx ./cmd/lfx
-```
+Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
 
-## CLI (implemented)
-
-- `lfx version` — prints version/commit
-- `lfx config` — print config, validate, show schema path, write example, show precedence
-- `lfx scan [root]` — discover documents, populate SQLite manifest. Global flags: `--config`, `--db`, `--log-level`, `--json`, `--dry-run`. Scan flags: `--root`, `--exclude-dir`, `--no-default-excludes`, `--max-depth`, `--stats-only`, `--follow-symlinks`, `--min-size`, `--max-size`, `--include-ext`, `--exclude-ext`, `--lang`.
-
-Note: other subcommands exist as stubs (commented) in `cmd/lfx/main.go`.
-
-## Config
-
-Precedence (highest → lowest): `--flags` > `$ENV_VARS` (see code) > `./lfx.toml` > `~/.config/lfx/lfx.toml` > defaults. Loaded via `internal/config` (TOML). Schema generated from `Config` struct (`cmd/genschema`) to `configs/lfx.schema.json` by `go generate ./internal/config/`.
-
-## Data model / manifest
-
-SQLite manifest at path from config (`[general].manifest_path`, defaults to `~/.local/state/lfx/manifest.db` in practice). Schema: `internal/manifest/migrations/001_initial.sql` defines tables (documents, classifications, organization, duplicates, tags, subject groups/aliases, FTS5). `internal/manifest` opens DB with `PRAGMA foreign_keys = ON`. Build requires `sqlite_fts5` tag. Content-addressed by SHA-256 (`documents.id`).
-
-## Architecture notes (high-signal)
-
-- CLI in `cmd/lfx/` (Cobra). Business logic in `internal/` — no `fmt.Print*`, no `os.Exit` there (interface-agnostic).
-- External tools via `os/exec`: Calibre (`ebook-meta`, `fetch-ebook-metadata`, `ebook-convert`, `calibredb`), `ocrmypdf`, `pdftotext`, `pdfinfo`, `ghostscript`, `tesseract`, `djvused`/`djvutxt`/`ddjvu`. Currently only `pdfinfo`, `pdftotext`, `djvused`, `djvutxt` are wired (in `internal/scan`); Calibre/OCR wrappers are planned.
-- Scan pipeline: `internal/scan` walks tree, filters by extensions/size/excludes/depth, skips symlinks by default, computes SHA-256, extracts page count + text-layer flag (PDF via `pdfinfo`/`pdftotext`, DJVU via `djvused`/`djvutxt`), upserts to manifest. Language is a **filename keyword heuristic** (`detectLanguage`, defaults `en`) — real detection pending. Dry-run supported and **defaults to true** (`[general].dry_run`); persist with `--dry-run=false`.
-- Concurrency: worker pools per phase with configurable limits (LLM/OCR). Context cancellation respected.
-- Two components separated: lfx (Go root) and lfx-rag (Python subdir), each with independent justfile and tooling (uv for Python).
-
-## Development gotchas
-
-- CGO required. On macOS need `sqlite3` dev headers (Homebrew usually fine). Build must include `-tags "sqlite_fts5"`.
-- `just build` depends on `schema` (go generate). If you change `internal/config` structs, regenerate schema.
-- Tests use `-race -count=1`. Integration tests may touch filesystem/manifest paths; keep temp dirs isolated.
-- Foreign keys: SQLite default off — code sets `PRAGMA foreign_keys = ON` on open.
-- Symlinks: skipped unless `--follow-symlinks` (safety).
-- Two justfiles: root (Go), `lfx-rag/` (Python/uv). Components independent.
-- `just check` runs fast guard (root: lint + build + test; lfx-rag: ruff check + ruff format --check + pyright + pytest). Use after small changes.
-- Task workflow: Plan→Build(in worktree, per step `just check`+commit)→Review(read-only, free model)→Verify→Merge to develop. Task files in `docs/tasks/NNN-*.md`.
-
-## Quick start
-
-```bash
-# build (Go)
-just build
-
-# scan dry-run
-./lfx scan ~/Documents --dry-run --json
-
-# scan and persist to manifest
-./lfx scan ~/
-
-# Python (lfx-rag)
-cd lfx-rag && just install && just test
-```
+(Yes, this file also applies to agents working on the ponytail repo itself. Especially to them.)
