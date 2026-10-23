@@ -23,10 +23,6 @@ dependencies = [
 [project.scripts]
 lfx-rag = "lfx_rag.cli.main:app"
 
-[build-system]
-requires = ["uv_build>=0.12.0,<0.13"]
-build-backend = "uv_build"
-
 [dependency-groups]
 dev = [
   "marimo[recommended]>=0.23.15",
@@ -37,29 +33,9 @@ dev = [
   "ruff>=0.16.0",
 ]
 
-[tool.ruff]
-target-version = "py312"
-line-length = 100
-# marimo notebooks are linted/formatted by marimo, not ruff
-exclude = ["notebooks"]
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "ARG", "RUF"]
-
-[tool.pyright]
-pythonVersion = "3.12"
-typeCheckingMode = "strict"
-reportMissingTypeStubs = false
-reportUnknownMemberType = false
-reportUnknownVariableType = false
-include = ["src", "tests", "scripts"]
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
-
-[tool.uv]
-package = true
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13"]
+build-backend = "uv_build"
 
 [tool.harlequin]
 default_profile = "migration-lfx-rag"
@@ -70,3 +46,27 @@ theme = "tokyo-night"
 viewer_max_rows = 100000
 keymap_name = ["vscode"]
 conn_str = ["tests/fixtures/manifest.db"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+include = ["src", "tests", "scripts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+# marimo notebooks are linted/formatted by marimo, not ruff
+exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "ARG", "RUF"]
+
+[tool.uv]
+package = true
