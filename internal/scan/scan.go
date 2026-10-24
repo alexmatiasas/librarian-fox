@@ -575,11 +575,12 @@ func hasTextLayer(path string, fileType manifest.FileType) bool {
 }
 
 func pdfHasTextLayer(path string) bool {
-	out, err := exec.Command("pdftotext", "-l", "1", path, "-").Output()
+	// Sample several pages: cover pages are often images even in born-digital PDFs.
+	out, err := exec.Command("pdftotext", "-l", "5", path, "-").Output()
 	if err != nil {
 		return false
 	}
-	return len(strings.TrimSpace(string(out))) > 0
+	return len(strings.TrimSpace(string(out))) > 50
 }
 
 func djvuHasTextLayer(path string) bool {
