@@ -1,6 +1,7 @@
 {
   "$defs": {
     "ChunkingConfig": {
+      "description": "Chunking strategy and parameters.",
       "properties": {
         "default_strategy": {
           "default": "sliding_window",
@@ -13,43 +14,34 @@
           "type": "string"
         },
         "semantic": {
-          "$ref": "#/$defs/SemanticChunking",
-          "default": {
-            "enabled": false,
-            "min_chunk_size": 100,
-            "threshold": 0.85
-          }
+          "$ref": "#/$defs/SemanticChunking"
         },
         "sliding_window": {
-          "$ref": "#/$defs/SlidingWindowChunking",
-          "default": {
-            "chunk_size": 512,
-            "overlap": 128,
-            "unit": "tokens"
-          }
+          "$ref": "#/$defs/SlidingWindowChunking"
         }
       },
       "title": "ChunkingConfig",
       "type": "object"
     },
     "CloudEmbeddings": {
+      "description": "Reserved (not wired).",
       "properties": {
         "enabled": {
           "default": false,
-          "description": "Enable cloud embeddings via API",
+          "description": "Unused",
           "title": "Enabled",
           "type": "boolean"
         },
         "model": {
           "default": "text-embedding-004",
-          "description": "Cloud embedding model name",
+          "description": "Unused",
           "title": "Model",
           "type": "string"
         },
         "provider": {
           "const": "google",
           "default": "google",
-          "description": "Cloud embeddings provider",
+          "description": "Unused",
           "title": "Provider",
           "type": "string"
         }
@@ -58,36 +50,37 @@
       "type": "object"
     },
     "CloudGeneration": {
+      "description": "Reserved (not wired).",
       "properties": {
         "enabled": {
           "default": false,
-          "description": "Enable cloud generation via API",
+          "description": "Unused",
           "title": "Enabled",
           "type": "boolean"
         },
         "max_tokens": {
           "default": 4096,
-          "description": "Maximum generation tokens",
+          "description": "Unused",
           "minimum": 1,
           "title": "Max Tokens",
           "type": "integer"
         },
         "model": {
           "default": "llama-3.3-70b-versatile",
-          "description": "Cloud LLM model name",
+          "description": "Unused",
           "title": "Model",
           "type": "string"
         },
         "provider": {
           "const": "groq",
           "default": "groq",
-          "description": "Cloud LLM provider",
+          "description": "Unused",
           "title": "Provider",
           "type": "string"
         },
         "temperature": {
           "default": 0.2,
-          "description": "LLM temperature",
+          "description": "Unused",
           "maximum": 2.0,
           "minimum": 0.0,
           "title": "Temperature",
@@ -98,20 +91,35 @@
       "type": "object"
     },
     "DocumentSourceConfig": {
+      "description": "Where to find documents.\n\nThe loader tries the manifest first (produced by lfx), falling back to\ndirectory traversal if no manifest rows/documents are found. `library_dir`\ndefaults to None because not every workflow uses a flat directory fallback.",
       "properties": {
         "library_dir": {
-          "default": "~/Biblioteca",
-          "description": "Library directory (used as fallback if manifest unavailable)",
-          "format": "path",
-          "title": "Library Dir",
-          "type": "string"
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Library directory fallback when manifest is unavailable",
+          "title": "Library Dir"
         },
         "manifest_path": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "default": "~/.local/share/lfx/manifest.db",
           "description": "Path to lfx manifest SQLite database",
-          "format": "path",
-          "title": "Manifest Path",
-          "type": "string"
+          "title": "Manifest Path"
         }
       },
       "title": "DocumentSourceConfig",
@@ -120,27 +128,17 @@
     "EmbeddingsConfig": {
       "properties": {
         "cloud": {
-          "$ref": "#/$defs/CloudEmbeddings",
-          "default": {
-            "enabled": false,
-            "model": "text-embedding-004",
-            "provider": "google"
-          }
+          "$ref": "#/$defs/CloudEmbeddings"
         },
         "local": {
-          "$ref": "#/$defs/LocalEmbeddings",
-          "default": {
-            "batch_size": 32,
-            "device": "auto",
-            "dimension": 384,
-            "model": "intfloat/multilingual-e5-small"
-          }
+          "$ref": "#/$defs/LocalEmbeddings"
         }
       },
       "title": "EmbeddingsConfig",
       "type": "object"
     },
     "FormatsConfig": {
+      "description": "Allowed document formats.",
       "properties": {
         "epub": {
           "default": true,
@@ -161,18 +159,11 @@
     "GenerationConfig": {
       "properties": {
         "cloud": {
-          "$ref": "#/$defs/CloudGeneration",
-          "default": {
-            "enabled": false,
-            "max_tokens": 4096,
-            "model": "llama-3.3-70b-versatile",
-            "provider": "groq",
-            "temperature": 0.2
-          }
+          "$ref": "#/$defs/CloudGeneration"
         },
         "default": {
           "default": "local",
-          "description": "Active generation provider",
+          "description": "Active provider",
           "enum": [
             "local",
             "cloud"
@@ -181,31 +172,25 @@
           "type": "string"
         },
         "local": {
-          "$ref": "#/$defs/LocalGeneration",
-          "default": {
-            "base_url": "http://localhost:11434",
-            "max_tokens": 2048,
-            "model": "qwen3:8b",
-            "provider": "ollama",
-            "temperature": 0.2
-          }
+          "$ref": "#/$defs/LocalGeneration"
         }
       },
       "title": "GenerationConfig",
       "type": "object"
     },
     "LocalEmbeddings": {
+      "description": "Local sentence-transformers embedding settings.",
       "properties": {
         "batch_size": {
           "default": 32,
-          "description": "Batch size for embedding generation",
+          "description": "Embedding batch size",
           "minimum": 1,
           "title": "Batch Size",
           "type": "integer"
         },
         "device": {
           "default": "auto",
-          "description": "Compute device (auto detects mps > cuda > cpu)",
+          "description": "Compute device (rag._device maps auto to None)",
           "enum": [
             "auto",
             "cpu",
@@ -214,13 +199,6 @@
           ],
           "title": "Device",
           "type": "string"
-        },
-        "dimension": {
-          "default": 384,
-          "description": "Embedding vector dimension",
-          "minimum": 1,
-          "title": "Dimension",
-          "type": "integer"
         },
         "model": {
           "default": "intfloat/multilingual-e5-small",
@@ -233,36 +211,37 @@
       "type": "object"
     },
     "LocalGeneration": {
+      "description": "Ollama settings (num_ctx/think are hardcoded in rag.answer()).",
       "properties": {
         "base_url": {
           "default": "http://localhost:11434",
-          "description": "Ollama server base URL",
+          "description": "Ollama base URL",
           "title": "Base Url",
           "type": "string"
         },
         "max_tokens": {
           "default": 2048,
-          "description": "Maximum generation tokens",
+          "description": "Max tokens to generate",
           "minimum": 1,
           "title": "Max Tokens",
           "type": "integer"
         },
         "model": {
           "default": "qwen3:8b",
-          "description": "Local LLM model name",
+          "description": "Ollama model name",
           "title": "Model",
           "type": "string"
         },
         "provider": {
           "const": "ollama",
           "default": "ollama",
-          "description": "Local LLM provider",
+          "description": "LLM provider",
           "title": "Provider",
           "type": "string"
         },
         "temperature": {
           "default": 0.2,
-          "description": "LLM temperature",
+          "description": "Sampling temperature",
           "maximum": 2.0,
           "minimum": 0.0,
           "title": "Temperature",
@@ -273,16 +252,17 @@
       "type": "object"
     },
     "MLflowConfig": {
+      "description": "Reserved (not wired).",
       "properties": {
         "enabled": {
           "default": false,
-          "description": "Enable MLflow experiment tracking",
+          "description": "Unused",
           "title": "Enabled",
           "type": "boolean"
         },
         "experiment_name": {
           "default": "lfx-rag",
-          "description": "MLflow experiment name",
+          "description": "Unused",
           "title": "Experiment Name",
           "type": "string"
         },
@@ -296,7 +276,7 @@
             }
           ],
           "default": null,
-          "description": "MLflow tracking URI (default: local mlruns/)",
+          "description": "Unused",
           "title": "Tracking Uri"
         }
       },
@@ -304,31 +284,28 @@
       "type": "object"
     },
     "MonitoringConfig": {
+      "description": "Reserved (not wired).",
       "properties": {
         "mlflow": {
-          "$ref": "#/$defs/MLflowConfig",
-          "default": {
-            "enabled": false,
-            "experiment_name": "lfx-rag",
-            "tracking_uri": null
-          }
+          "$ref": "#/$defs/MLflowConfig"
         }
       },
       "title": "MonitoringConfig",
       "type": "object"
     },
     "PipelineConfig": {
+      "description": "Reserved (not wired).",
       "properties": {
         "batch_size": {
           "default": 10,
-          "description": "Documents per batch",
+          "description": "Unused",
           "minimum": 1,
           "title": "Batch Size",
           "type": "integer"
         },
         "max_concurrent": {
           "default": 4,
-          "description": "Max parallel workers",
+          "description": "Unused",
           "minimum": 1,
           "title": "Max Concurrent",
           "type": "integer"
@@ -338,22 +315,23 @@
       "type": "object"
     },
     "RerankerConfig": {
+      "description": "Reserved (not wired).",
       "properties": {
         "enabled": {
           "default": false,
-          "description": "Enable cross-encoder reranker",
+          "description": "Unused",
           "title": "Enabled",
           "type": "boolean"
         },
         "model": {
           "default": "bge-reranker-v2-m3",
-          "description": "Reranker model identifier",
+          "description": "Unused",
           "title": "Model",
           "type": "string"
         },
         "top_k": {
           "default": 5,
-          "description": "Number of results after reranking",
+          "description": "Unused",
           "minimum": 1,
           "title": "Top K",
           "type": "integer"
@@ -363,10 +341,11 @@
       "type": "object"
     },
     "SemanticChunking": {
+      "description": "Reserved for future semantic chunking (not wired).",
       "properties": {
         "enabled": {
           "default": false,
-          "description": "Enable semantic chunking (experimental)",
+          "description": "Enable semantic chunking",
           "title": "Enabled",
           "type": "boolean"
         },
@@ -379,7 +358,7 @@
         },
         "threshold": {
           "default": 0.85,
-          "description": "Similarity threshold for splitting",
+          "description": "Split threshold",
           "maximum": 1.0,
           "minimum": 0.0,
           "title": "Threshold",
@@ -390,40 +369,32 @@
       "type": "object"
     },
     "SlidingWindowChunking": {
+      "description": "Word/character-agnostic sliding window over tokenized text.\n\nWith the default embedding model (e5-small) the hard limit is 512 tokens.\nchunk_size is kept under 512 to leave room for the \"passage:\" prefix added\nby rag.index(). overlap controls how much context is shared between\nadjacent chunks.",
       "properties": {
         "chunk_size": {
-          "default": 512,
-          "description": "Number of tokens per chunk",
+          "default": 500,
+          "description": "Max tokens per chunk",
           "minimum": 1,
           "title": "Chunk Size",
           "type": "integer"
         },
         "overlap": {
-          "default": 128,
+          "default": 100,
           "description": "Overlap between consecutive chunks",
           "minimum": 0,
           "title": "Overlap",
           "type": "integer"
-        },
-        "unit": {
-          "default": "tokens",
-          "description": "Unit for chunk_size",
-          "enum": [
-            "tokens",
-            "chars"
-          ],
-          "title": "Unit",
-          "type": "string"
         }
       },
       "title": "SlidingWindowChunking",
       "type": "object"
     },
     "StateConfig": {
+      "description": "Reserved (not wired).",
       "properties": {
         "db_path": {
           "default": "~/.local/share/lfx-rag/state.db",
-          "description": "Path to SQLite tracking database",
+          "description": "Unused",
           "format": "path",
           "title": "Db Path",
           "type": "string"
@@ -433,31 +404,15 @@
       "type": "object"
     },
     "VectorStoreConfig": {
+      "description": "LanceDB settings. Vectors are stored normalized; rag uses LanceDB defaults.",
       "properties": {
-        "create_if_missing": {
-          "default": true,
-          "description": "Create the table if it doesn't exist",
-          "title": "Create If Missing",
-          "type": "boolean"
-        },
         "search_limit": {
-          "default": 20,
-          "description": "Default top-k for vector search",
+          "default": 5,
+          "description": "Top-k for retrieval",
           "maximum": 200,
           "minimum": 1,
           "title": "Search Limit",
           "type": "integer"
-        },
-        "search_metric": {
-          "default": "cosine",
-          "description": "Distance metric for vector similarity search",
-          "enum": [
-            "cosine",
-            "l2",
-            "dot"
-          ],
-          "title": "Search Metric",
-          "type": "string"
         },
         "table": {
           "default": "documents",
@@ -481,111 +436,34 @@
   "description": "JSON Schema for lfx-rag YAML configuration files",
   "properties": {
     "chunking": {
-      "$ref": "#/$defs/ChunkingConfig",
-      "default": {
-        "default_strategy": "sliding_window",
-        "semantic": {
-          "enabled": false,
-          "min_chunk_size": 100,
-          "threshold": 0.85
-        },
-        "sliding_window": {
-          "chunk_size": 512,
-          "overlap": 128,
-          "unit": "tokens"
-        }
-      }
+      "$ref": "#/$defs/ChunkingConfig"
     },
     "document_source": {
-      "$ref": "#/$defs/DocumentSourceConfig",
-      "default": {
-        "library_dir": "~/Biblioteca",
-        "manifest_path": "~/.local/share/lfx/manifest.db"
-      }
+      "$ref": "#/$defs/DocumentSourceConfig"
     },
     "embeddings": {
-      "$ref": "#/$defs/EmbeddingsConfig",
-      "default": {
-        "cloud": {
-          "enabled": false,
-          "model": "text-embedding-004",
-          "provider": "google"
-        },
-        "local": {
-          "batch_size": 32,
-          "device": "auto",
-          "dimension": 384,
-          "model": "intfloat/multilingual-e5-small"
-        }
-      }
+      "$ref": "#/$defs/EmbeddingsConfig"
     },
     "formats": {
-      "$ref": "#/$defs/FormatsConfig",
-      "default": {
-        "epub": true,
-        "pdf": true
-      }
+      "$ref": "#/$defs/FormatsConfig"
     },
     "generation": {
-      "$ref": "#/$defs/GenerationConfig",
-      "default": {
-        "cloud": {
-          "enabled": false,
-          "max_tokens": 4096,
-          "model": "llama-3.3-70b-versatile",
-          "provider": "groq",
-          "temperature": 0.2
-        },
-        "default": "local",
-        "local": {
-          "base_url": "http://localhost:11434",
-          "max_tokens": 2048,
-          "model": "qwen3:8b",
-          "provider": "ollama",
-          "temperature": 0.2
-        }
-      }
+      "$ref": "#/$defs/GenerationConfig"
     },
     "monitoring": {
-      "$ref": "#/$defs/MonitoringConfig",
-      "default": {
-        "mlflow": {
-          "enabled": false,
-          "experiment_name": "lfx-rag",
-          "tracking_uri": null
-        }
-      }
+      "$ref": "#/$defs/MonitoringConfig"
     },
     "pipeline": {
-      "$ref": "#/$defs/PipelineConfig",
-      "default": {
-        "batch_size": 10,
-        "max_concurrent": 4
-      }
+      "$ref": "#/$defs/PipelineConfig"
     },
     "reranker": {
-      "$ref": "#/$defs/RerankerConfig",
-      "default": {
-        "enabled": false,
-        "model": "bge-reranker-v2-m3",
-        "top_k": 5
-      }
+      "$ref": "#/$defs/RerankerConfig"
     },
     "state": {
-      "$ref": "#/$defs/StateConfig",
-      "default": {
-        "db_path": "~/.local/share/lfx-rag/state.db"
-      }
+      "$ref": "#/$defs/StateConfig"
     },
     "vector_store": {
-      "$ref": "#/$defs/VectorStoreConfig",
-      "default": {
-        "create_if_missing": true,
-        "search_limit": 20,
-        "search_metric": "cosine",
-        "table": "documents",
-        "uri": "~/.local/share/lfx-rag/lancedb"
-      }
+      "$ref": "#/$defs/VectorStoreConfig"
     }
   },
   "title": "lfx-rag Configuration",

@@ -10,7 +10,7 @@ document_source:
   # Path to lfx manifest SQLite database
   manifest_path: ~/.local/share/lfx/manifest.db
   # Library directory (used as fallback if manifest is unavailable)
-  library_dir: ~/Biblioteca
+  library_dir: None
 
 # === File Formats ===
 formats:
@@ -23,8 +23,8 @@ chunking:
   default_strategy: sliding_window
 
   sliding_window:
-    chunk_size: 512 # Tokens per chunk
-    overlap: 128 # Overlap between consecutive chunks
+    chunk_size: 500 # Tokens per chunk (e5 limit is 512)
+    overlap: 100 # Overlap between consecutive chunks (tokens)
     unit: tokens # tokens | chars
 
   semantic:
@@ -49,7 +49,7 @@ vector_store:
   uri: "~/.local/share/lfx-rag/lancedb"
   table: documents
   create_if_missing: true
-  search_limit: 20 # Default top-k for vector search
+  search_limit: 5 # Default top-k for vector search
   search_metric: cosine # cosine | l2 | dot
 
 # === Reranker ===
