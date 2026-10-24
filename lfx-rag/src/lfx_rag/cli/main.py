@@ -65,15 +65,31 @@ def main(
 @app.command()
 def index(ctx: typer.Context) -> None:
     """Index documents into the vector store."""
-    cfg = ctx.obj["config"]
-    logger.info("Library dir: %s", cfg.document_source.library_dir)
-    typer.echo("Index not implemented yet")
+    from lfx_rag.rag import index as run_index
+
+    docs, chunks = run_index(ctx.obj["config"])
+    typer.echo(f"Indexed {chunks} chunks from {docs} documents")
 
 
 @app.command()
-def query() -> None:
+def query(
+    ctx: typer.Context,
+    question: str = typer.Argument(..., help="Question to ask"),
+    k: int | None = typer.Option(None, "--k", help="Chunks to retrieve"),
+) -> None:
     """Query the RAG system."""
-    typer.echo("Query not implemented yet")
+    from lfx_rag.rag import answer
+
+    cfg = ctx.obj["config"]
+    text, hits = answer(cfg, question, k or cfg.vector_store.search_limit)
+    typer.echo(f"\n{text}\n")
+    typer.echo("Sources:")
+    seen: set[str] = set()
+    for i, hit in enumerate(hits, start=1):
+        source = Path(hit["source_path"]).name
+        typer.echo(f"  [{i}] {hit['title'] or source} ({hit['subject'] or source})")
+        seen.add(hit["doc_id"])
+    logger.debug("Retrieved chunks from %d documents", len(seen))
 
 
 if __name__ == "__main__":

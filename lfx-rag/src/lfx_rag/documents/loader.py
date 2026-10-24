@@ -33,7 +33,7 @@ def load_documents(config: LfxRagConfig) -> list[Document]:
     file locations). Falls back to walking the library directory.
     """
     db_path = _resolve(config.document_source.manifest_path)
-    if db_path and db_path.exists():
+    if db_path is not None and db_path.exists():
         logger.info("Loading from manifest: %s", db_path)
         docs = _load_from_manifest(config, db_path)
         if docs:
@@ -41,7 +41,7 @@ def load_documents(config: LfxRagConfig) -> list[Document]:
         logger.info("Manifest yielded no documents, falling back to directory walk")
 
     lib_dir = _resolve(config.document_source.library_dir)
-    if lib_dir and lib_dir.exists():
+    if lib_dir is not None and lib_dir.exists():
         logger.info("Loading from directory: %s", lib_dir)
         return _load_from_directory(config, lib_dir)
 
@@ -49,7 +49,9 @@ def load_documents(config: LfxRagConfig) -> list[Document]:
     return []
 
 
-def _resolve(path: Path) -> Path:
+def _resolve(path: Path | None) -> Path | None:
+    if path is None:
+        return None
     return path.expanduser().resolve()
 
 
@@ -90,7 +92,7 @@ def _load_from_manifest(config: LfxRagConfig, db_path: Path) -> list[Document]:
             continue
 
         file_path = _resolve(Path(row["target_path"] or row["source_path"]))
-        if not file_path.exists():
+        if file_path is None or not file_path.exists():
             logger.warning("File not found: %s", file_path)
             continue
 
@@ -146,7 +148,7 @@ def _extract_text(path: Path, file_type: str) -> str:
                 if isinstance(page_text, str) and page_text:
                     lines.append(page_text)
             doc.close()
-            return "".join(lines).strip()
+            return "\n".join(lines).strip()
         logger.warning("Unsupported file type: %s (%s)", file_type, path)
         return ""
     except Exception as e:

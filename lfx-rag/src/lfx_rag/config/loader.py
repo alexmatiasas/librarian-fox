@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    """
+    Merge base configs with overrided configs
+    """
     result = base.copy()
     for key, value in override.items():
         existing = result.get(key)
