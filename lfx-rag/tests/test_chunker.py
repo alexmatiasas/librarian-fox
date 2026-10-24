@@ -84,3 +84,23 @@ def test_two_words_chunk_size_one() -> None:
     assert len(chunks) == 2
     assert chunks[0].text == "hello"
     assert chunks[1].text == "world"
+
+
+class _CharTokenizer:
+    def encode(self, text: str, add_special_tokens: bool = False) -> list[str]:  # noqa: ARG002
+        return list(text)
+
+    def decode(self, ids: list[str], skip_special_tokens: bool = True) -> str:  # noqa: ARG002
+        return "".join(ids)
+
+
+def test_tokenizer_chunking_respects_limit() -> None:
+    text = "abcdefghij"
+    chunks = chunk_sliding_window(
+        text, doc_id="tok", chunk_size=4, overlap=1, tokenizer=_CharTokenizer()
+    )
+    assert len(chunks) > 1
+    assert all(len(c.text) <= 4 for c in chunks)
+    assert chunks[0].text == "abcd"
+    assert chunks[1].start_idx == 3
+    assert chunks[-1].text.endswith("j")

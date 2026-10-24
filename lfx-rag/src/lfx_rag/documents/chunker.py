@@ -31,18 +31,21 @@ def chunk_sliding_window(
     chunk_size: int = 512,
     overlap: int = 128,
     metadata: dict[str, Any] | None = None,
+    tokenizer: Any | None = None,
 ) -> list[Chunk]:
     """Split text into overlapping chunks using a sliding window.
 
-    Uses word-level tokenization as a simple approximation of
-    token counting. Chunk boundaries fall on word boundaries.
+    Without a tokenizer, units are whitespace-separated words (approximation).
+    Pass the embedding model's tokenizer to count real tokens and stay under
+    the model's input limit.
 
     Args:
         text: Document text to chunk.
         doc_id: Document identifier for provenance.
-        chunk_size: Number of tokens per chunk.
-        overlap: Overlap between consecutive chunks (in tokens).
+        chunk_size: Units per chunk (tokens when a tokenizer is given).
+        overlap: Overlap between consecutive chunks (in units).
         metadata: Optional metadata to attach to each chunk.
+        tokenizer: Optional HuggingFace tokenizer (needs encode/decode).
 
     Returns:
         List of Chunk objects.
@@ -50,7 +53,17 @@ def chunk_sliding_window(
     if not text:
         return []
 
-    tokens = _tokenize(text)
+    if tokenizer is None:
+        tokens: list[Any] = _tokenize(text)
+
+        def detokenize(units: list[Any]) -> str:
+            return _detokenize([str(u) for u in units])
+    else:
+        tokens = tokenizer.encode(text, add_special_tokens=False)
+
+        def detokenize(units: list[Any]) -> str:
+            return tokenizer.decode(units, skip_special_tokens=True)
+
     n = len(tokens)
 
     if n <= chunk_size:
@@ -67,7 +80,7 @@ def chunk_sliding_window(
         chunks.append(
             Chunk(
                 doc_id=doc_id,
-                text=_detokenize(chunk_tokens),
+                text=detokenize(chunk_tokens),
                 start_idx=start,
                 end_idx=end,
                 metadata=meta,
