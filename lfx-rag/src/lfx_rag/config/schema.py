@@ -61,7 +61,7 @@ class SemanticChunking(BaseModel):
 class ChunkingConfig(BaseModel):
     """Chunking strategy and parameters."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     default_strategy: Literal["sliding_window", "semantic"] = Field(
         default="sliding_window",
@@ -94,7 +94,7 @@ class CloudEmbeddings(BaseModel):
 
 
 class EmbeddingsConfig(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     local: LocalEmbeddings = Field(default_factory=LocalEmbeddings)
     cloud: CloudEmbeddings = Field(default_factory=CloudEmbeddings)
@@ -103,7 +103,7 @@ class EmbeddingsConfig(BaseModel):
 class VectorStoreConfig(BaseModel):
     """LanceDB settings. Vectors are stored normalized; rag uses LanceDB defaults."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     uri: Path = Field(
         default=Path("~/.local/share/lfx-rag/lancedb"),
@@ -142,7 +142,7 @@ class CloudGeneration(BaseModel):
 
 
 class GenerationConfig(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     default: Literal["local", "cloud"] = Field(default="local", description="Active provider")
     local: LocalGeneration = Field(default_factory=LocalGeneration)
@@ -160,7 +160,7 @@ class MLflowConfig(BaseModel):
 class MonitoringConfig(BaseModel):
     """Reserved (not wired)."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     mlflow: MLflowConfig = Field(default_factory=MLflowConfig)
 
@@ -168,7 +168,7 @@ class MonitoringConfig(BaseModel):
 class StateConfig(BaseModel):
     """Reserved (not wired)."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     db_path: Path = Field(
         default=Path("~/.local/share/lfx-rag/state.db"),
@@ -179,14 +179,14 @@ class StateConfig(BaseModel):
 class PipelineConfig(BaseModel):
     """Reserved (not wired)."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     batch_size: int = Field(default=10, ge=1, description="Unused")
     max_concurrent: int = Field(default=4, ge=1, description="Unused")
 
 
 class LfxRagConfig(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="forbid")
 
     document_source: DocumentSourceConfig = Field(default_factory=DocumentSourceConfig)
     formats: FormatsConfig = Field(default_factory=FormatsConfig)

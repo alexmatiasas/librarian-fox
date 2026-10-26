@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
@@ -90,6 +91,14 @@ def query(
         typer.echo(f"  [{i}] {hit['title'] or source} ({hit['subject'] or source})")
         seen.add(hit["doc_id"])
     logger.debug("Retrieved chunks from %d documents", len(seen))
+
+
+@app.command()
+def validate(ctx: typer.Context) -> None:
+    """Print effective configuration."""
+    cfg = ctx.obj["config"]
+    data = cfg.model_dump(mode="json")
+    typer.echo(json.dumps(data, indent=2))
 
 
 if __name__ == "__main__":
