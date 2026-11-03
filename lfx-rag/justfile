@@ -61,7 +61,7 @@ run-cli:
 # run a marimo server of the FILE described, no token is enable
 [group("marimo")]
 edit-marimo FILE:
-    @uv run marimo edit --no-token {{ FILE }}
+    @uv run marimo edit --no-sandbox --no-token {{ FILE }}
 
 # lint files in the marimo DIRectory supplied, default "notebooks/"
 [group("marimo")]

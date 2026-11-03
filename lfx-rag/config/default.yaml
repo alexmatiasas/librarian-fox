@@ -48,9 +48,7 @@ embeddings:
 vector_store:
   uri: "~/.local/share/lfx-rag/lancedb"
   table: documents
-  create_if_missing: true
   search_limit: 5 # Default top-k for vector search
-  search_metric: cosine # cosine | l2 | dot
 
 # === Reranker ===
 reranker:
