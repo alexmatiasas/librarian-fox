@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=./lfx-rag.schema.json
+# ──────────────────────────────────────────────
+# lfx-rag default configuration
+# Hierarchy: defaults → ~/.config/lfx-rag/config.yaml
+#            → ./config.yaml → --config flag
+# ──────────────────────────────────────────────
+
+# === Document Sources ===
+document_source:
+  # Path to lfx manifest SQLite database
+  manifest_path: ~/.local/share/lfx/manifest.db
+  # Library directory (used as fallback if manifest is unavailable)
+  library_dir: None
+
+# === File Formats ===
+formats:
+  pdf: true # Process PDF files
+  epub: true # Process EPUB files
+
+# === Text Chunking ===
+chunking:
+  # Active strategy: sliding_window | semantic
+  default_strategy: sliding_window
+
+  sliding_window:
+    chunk_size: 500 # Tokens per chunk (e5 limit is 512)
+    overlap: 100 # Overlap between consecutive chunks (tokens)
+    unit: tokens # tokens | chars
+
+  semantic:
+    enabled: false # Enable semantic chunking (experimental)
+    threshold: 0.85 # Similarity threshold for topic splits
+    min_chunk_size: 100 # Minimum chunk size in tokens
+
+# === Embeddings ===
+embeddings:
+  local:
+    model: "intfloat/multilingual-e5-small"
+    dimension: 384 # Vector dimension for this model
+    device: auto # auto | cpu | mps | cuda
+    batch_size: 32 # Batch size for embedding generation
+  cloud:
+    enabled: false # Enable cloud embeddings via API
+    provider: google # Cloud embeddings provider
+    model: "text-embedding-004"
+
+# === Vector Store (LanceDB) ===
+vector_store:
+  uri: "~/.local/share/lfx-rag/lancedb"
+  table: documents
+  search_limit: 5 # Default top-k for vector search
+
+# === Reranker ===
+reranker:
+  enabled: false # Enable cross-encoder reranker
+  model: "bge-reranker-v2-m3"
+  top_k: 5 # Results after reranking
+
+# === Generation (RAG responses) ===
+generation:
+  default: local # local | cloud
+  local:
+    provider: ollama
+    model: "qwen3:8b"
+    base_url: "http://localhost:11434"
+    temperature: 0.2
+    max_tokens: 2048
+  cloud:
+    enabled: false
+    provider: groq
+    model: "llama-3.3-70b-versatile"
+    temperature: 0.2
+    max_tokens: 4096
+
+# === Experiment Tracking ===
+monitoring:
+  mlflow:
+    enabled: false
+    tracking_uri: null # null = local mlruns/ directory
+    experiment_name: "lfx-rag"
+
+# === State Tracking ===
+state:
+  db_path: "~/.local/share/lfx-rag/state.db"
+
+# === Pipeline Execution ===
+pipeline:
+  batch_size: 10 # Documents per batch
+  max_concurrent: 4 # Max parallel workers

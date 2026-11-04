@@ -1,14 +1,30 @@
 pre-commit:
+  parallel: true
   commands:
-    lint:
-      run: golangci-lint run
+    golangci-lint:
+      env: &lfx_env
+        PATH: "/opt/homebrew/bin:/usr/local/bin:$PATH"
+      run: golangci-lint run ./...
+      glob: '*.go'
       stage_fixed: true
-    format:
-      run: gofumpt -w -extra .
+    go-fmt:
+      env: *lfx_env
+      glob: '*.go'
+      run: gofumpt -w -extra {staged_files}
       stage_fixed: true
     go-mod-tidy:
+      env: *lfx_env
       run: go mod tidy
       stage_fixed: true
+    python-hooks:
+      env: *lfx_env
+      glob: "**/*.py"
+      exclude:
+        - 'lfx-rag/notebooks/**'
+      run: prek run 'lfx-rag/' --files {staged_files}
+    repo-hygiene:
+      env: *lfx_env
+      run: prek run --config prek.toml --files {staged_files}
 
 commit-msg:
   commands:
@@ -22,16 +38,24 @@ commit-msg:
         fi
 
 pre-push:
+  parallel: true
   commands:
-    test:
-      run: go test -race -count=1 ./...
+    go-test:
+      env: *lfx_env
+      run: go test -tags sqlite_fts5 -race -count=1 ./...
+    python-test:
+      env: *lfx_env
+      root: "lfx-rag/"
+      run: uv run pytest -v
 
 post-checkout:
   commands:
     deps:
+      env: *lfx_env
       run: go mod download
 
 post-merge:
   commands:
     deps:
+      env: *lfx_env
       run: go mod download
