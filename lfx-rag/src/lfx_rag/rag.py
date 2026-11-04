@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import logging
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -131,3 +133,54 @@ def answer(cfg: LfxRagConfig, question: str, k: int) -> tuple[str, list[dict[str
     response = httpx.post(f"{gen.base_url}/api/generate", json=payload, timeout=300)
     response.raise_for_status()
     return response.json()["response"].strip(), hits
+
+
+def answer_stream(cfg: LfxRagConfig, question: str, k: int) -> Iterator[dict[str, Any]]:
+    """Stream answer from Ollama token by token via SSE-friendly dicts."""
+    hits = retrieve(cfg, question, k)
+    context = "\n\n".join(
+        f"[{i}] {hit['title'] or Path(hit['source_path']).name} — {hit['text']}"
+        for i, hit in enumerate(hits, start=1)
+    )
+    prompt = PROMPT.format(context=context, question=question)
+
+    gen = cfg.generation.local
+    payload = {
+        "model": gen.model,
+        "prompt": prompt,
+        "stream": True,
+        "think": False,
+        "options": {
+            "temperature": gen.temperature,
+            "num_predict": gen.max_tokens,
+            "num_ctx": 8192,
+        },
+    }
+
+    url = f"{gen.base_url}/api/generate"
+    with httpx.stream("POST", url, json=payload, timeout=None) as resp:
+        resp.raise_for_status()
+        for line in resp.iter_lines():
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if data.get("response"):
+                yield {"type": "token", "content": data["response"]}
+            if data.get("done"):
+                # Send sources at the end
+                sources = []
+                for i, hit in enumerate(hits, start=1):
+                    sources.append(
+                        {
+                            "index": i,
+                            "title": hit.get("title") or Path(hit["source_path"]).name,
+                            "subject": hit.get("subject"),
+                            "source_path": hit.get("source_path"),
+                            "doc_id": hit.get("doc_id"),
+                        }
+                    )
+                yield {"type": "done", "sources": sources}
+                break
